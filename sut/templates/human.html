@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人工标注 - 中国绘画分析系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: #f5f5f0;
+        }
+
+        /* 顶部导航 */
+        .header {
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+            color: white;
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid #d2691e;
+        }
+        .header h1 { font-size: 32px; font-weight: 600; margin-bottom: 8px; }
+        .header .subtitle { font-size: 16px; opacity: 0.9; }
+
+        /* 导航栏 */
+        .nav {
+            background: #fff;
+            padding: 14px 40px;
+            display: flex;
+            justify-content: space-evenly;
+            border-bottom: 1px solid #ddd;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .nav a {
+            color: #333;
+            text-decoration: none;
+            font-size: 18px;
+            padding: 8px 0;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .nav a:hover, .nav a.active {
+            color: #8b4513;
+            border-bottom-color: #8b4513;
+        }
+
+        /* 主体 */
+        .container { width: 100%; margin: 0 auto; padding: 20px; }
+
+        /* 统计卡片 */
+        .stats-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 25px 40px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-evenly;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .stat-item { text-align: center; }
+        .stat-number { font-size: 36px; font-weight: bold; color: #8b4513; }
+        .stat-label { font-size: 14px; color: #666; margin-top: 6px; }
+
+        /* 工具栏 */
+        .toolbar {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 25px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .result-count { color: #666; font-size: 13px; }
+        .search-box {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 250px;
+        }
+        .user-filter {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-right: 10px;
+        }
+
+        /* 图片网格 */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+        }
+        .painting-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        .painting-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        .painting-image {
+            width: 100%;
+            height: 200px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .painting-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .bbox-count-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(139, 69, 19, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        .atr-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        .painting-info { padding: 12px; }
+        .painting-meta { font-size: 12px; color: #666; line-height: 1.8; }
+        .tag {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #f5e6d3;
+            color: #8b4513;
+            border-radius: 3px;
+            font-size: 11px;
+            margin: 2px;
+        }
+        .tag-tech {
+            background: #e8f4f8;
+            color: #0c5460;
+        }
+
+        /* 加载更多 */
+        .load-more {
+            text-align: center;
+            margin: 30px;
+        }
+        .load-more button {
+            padding: 12px 40px;
+            background: #8b4513;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .load-more button:hover { background: #a0522d; }
+        .load-more button:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* 详情弹窗 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            padding: 15px 25px;
+            background: #8b4513;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 { font-size: 18px; }
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .modal-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .modal-image-area {
+            flex: 1;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            min-height: 500px;
+            overflow: auto;  /* 横长卷：允许滚动查看 */
+        }
+        .modal-image-area canvas {
+            max-width: 100%;
+            max-height: 80vh;
+        }
+        /* 横长卷（宽高比>2）：固定高度、横向滚动查看 */
+        .modal-image-area.wide-scroll {
+            justify-content: flex-start;
+            align-items: center;
+        }
+        .modal-image-area.wide-scroll canvas {
+            max-width: none !important;
+            max-height: none !important;
+            height: 70vh;
+            width: auto;
+            flex-shrink: 0;
+        }
+        /* 横向滚动时固定在视口内的导航按钮 */
+        .wide-scroll .modal-nav {
+            position: sticky;
+            transform: none;
+        }
+        .wide-scroll .modal-prev { left: 10px; margin-right: -45px; }
+        .wide-scroll .modal-next { right: 10px; margin-left: -45px; }
+        .modal-sidebar {
+            width: 320px;
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 1px solid #ddd;
+            background: #fafafa;
+        }
+        .modal-field { margin-bottom: 15px; }
+        .modal-field label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .modal-field span { font-size: 14px; color: #333; }
+
+        /* 标签组 */
+        .tag-group { margin-bottom: 12px; }
+        .tag-group-title {
+            font-size: 12px;
+            color: #8b4513;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 4px; }
+        .anno-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .anno-tag.objects { background: #f5e6d3; color: #8b4513; }
+        .anno-tag.techniques { background: #e8f4f8; color: #0c5460; }
+        .anno-tag:hover { opacity: 0.8; }
+        .anno-tag.active { outline: 2px solid #8b4513; }
+
+        /* 色彩条 */
+        .color-bar {
+            display: flex;
+            height: 30px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .color-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* 局部标注列表 */
+        .local-anno-list { margin-top: 10px; }
+        .local-anno-item {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .local-anno-item:hover { border-color: #8b4513; }
+        .local-anno-item.highlight { border-color: #8b4513; background: #fdf6ec; }
+
+        /* 导航按钮 */
+        .modal-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            padding: 15px 10px;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            z-index: 10;
+        }
+        .modal-nav:hover { background: rgba(0,0,0,0.7); }
+        .modal-prev { left: 10px; }
+        .modal-next { right: 10px; }
+        .modal-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* 图例 */
+        .legend {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .legend-item { display: flex; align-items: center; margin: 3px 0; }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>人工标注数据</h1>
+            <div class="subtitle">标注员手动标注的全局标签与局部区域标注</div>
+        </div>
+    </div>
+
+    <div class="nav">
+        <a href="/">首页</a>
+        <a href="/images">图片查看</a>
+        <a href="/shinu">明清仕女图</a>
+        <a href="/human" class="active">人工标注</a>
+    </div>
+
+    <div class="container">
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-number" id="statTotal">-</div>
+                <div class="stat-label">标注图片总数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="statUsers">-</div>
+                <div class="stat-label">标注员数量</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="statLocal">-</div>
+                <div class="stat-label">含局部标注</div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div>
+                <span class="result-count" id="resultCount">加载中...</span>
+            </div>
+            <div>
+                <select class="user-filter" id="userFilter" onchange="loadImages(1)">
+                    <option value="">全部标注员</option>
+                </select>
+                <input type="text" class="search-box" id="searchBox" placeholder="搜索UUID..." onkeyup="if(event.key==='Enter')loadImages(1)">
+                <button onclick="loadImages(1)" style="padding:8px 15px;background:#8b4513;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:5px">搜索</button>
+            </div>
+        </div>
+
+        <div class="gallery-grid" id="gallery"></div>
+
+        <div class="load-more">
+            <button id="loadMoreBtn" onclick="loadImages(currentPage + 1)">加载更多</button>
+        </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">标注详情</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-image-area">
+                    <button class="modal-nav modal-prev" id="modalPrevBtn" onclick="navigateModal(-1)">&#8249;</button>
+                    <canvas id="overlayCanvas"></canvas>
+                    <button class="modal-nav modal-next" id="modalNextBtn" onclick="navigateModal(1)">&#8250;</button>
+                    <div class="legend" id="legend"></div>
+                </div>
+                <div class="modal-sidebar" id="modalInfo"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allItems = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const PER_PAGE = 50;
+        let currentModalData = null;
+        let modalIndex = -1;
+
+        // bbox颜色（不同标注员用不同颜色系）
+        const ANNO_COLORS = [
+            '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6',
+            '#1abc9c', '#e67e22', '#34495e', '#e91e63', '#00bcd4'
+        ];
+
+        // 初始化
+        async function init() {
+            await loadStats();
+            await loadImages(1);
+        }
+
+        async function loadStats() {
+            try {
+                const resp = await fetch('api/human_stats');
+                const stats = await resp.json();
+                document.getElementById('statTotal').textContent = stats.total;
+                document.getElementById('statUsers').textContent = Object.keys(stats.by_user).length;
+                document.getElementById('statLocal').textContent = allItems.filter(i => i.num_local > 0).length || '-';
+
+                // 填充用户筛选下拉
+                const select = document.getElementById('userFilter');
+                for (const user of Object.keys(stats.by_user)) {
+                    const opt = document.createElement('option');
+                    opt.value = user;
+                    opt.textContent = `${user} (${stats.by_user[user]})`;
+                    select.appendChild(opt);
+                }
+            } catch (e) {
+                console.error('加载统计失败:', e);
+            }
+        }
+
+        async function loadImages(page) {
+            const search = document.getElementById('searchBox').value;
+            const user = document.getElementById('userFilter').value;
+
+            let url = `api/human_annotations?page=${page}&per_page=${PER_PAGE}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (user) url += `&user=${encodeURIComponent(user)}`;
+
+            try {
+                const resp = await fetch(url);
+                const data = await resp.json();
+
+                if (page === 1) {
+                    filteredData = data.items;
+                    document.getElementById('gallery').innerHTML = '';
+                } else {
+                    filteredData = filteredData.concat(data.items);
+                }
+
+                currentPage = page;
+                document.getElementById('resultCount').textContent = `共 ${data.total} 张，已显示 ${filteredData.length} 张`;
+                document.getElementById('loadMoreBtn').disabled = filteredData.length >= data.total;
+                document.getElementById('loadMoreBtn').style.display = filteredData.length >= data.total ? 'none' : 'inline-block';
+
+                renderGallery(data.items);
+            } catch (e) {
+                console.error('加载失败:', e);
+            }
+        }
+
+        function renderGallery(items) {
+            const grid = document.getElementById('gallery');
+            for (const item of items) {
+                const card = document.createElement('div');
+                card.className = 'painting-card';
+                card.onclick = () => showDetail(item.uuid);
+
+                const objects = item.objects || [];
+                const techniques = item.techniques || [];
+
+                card.innerHTML = `
+                    <div class="painting-image">
+                        <img src="api/thumb/${item.uuid}" loading="lazy"
+                             onerror="this.parentElement.innerHTML='<div style=color:#999>加载失败</div>'">
+                        <div class="atr-badge">${item.atrID}</div>
+                        ${item.num_local > 0 ? `<div class="bbox-count-badge">${item.num_local} 个区域</div>` : ''}
+                    </div>
+                    <div class="painting-info">
+                        <div class="painting-meta">
+                            <div>${item.date} | 标注员: ${item.user}</div>
+                            <div>${objects.slice(0, 3).map(o => `<span class="tag">${o}</span>`).join('')}</div>
+                            <div>${techniques.slice(0, 2).map(t => `<span class="tag tag-tech">${t}</span>`).join('')}</div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            }
+        }
+
+        async function showDetail(uuid) {
+            modalIndex = filteredData.findIndex(i => i.uuid === uuid);
+            document.getElementById('detailModal').classList.add('show');
+            updateNavBtns();
+
+            try {
+                const resp = await fetch(`api/human_annotation/${uuid}`);
+                const data = await resp.json();
+                currentModalData = data;
+                renderModalInfo(data);
+                drawOverlay(data);
+            } catch (e) {
+                console.error('加载详情失败:', e);
+            }
+        }
+
+        function renderModalInfo(data) {
+            const info = document.getElementById('modalInfo');
+            let html = `
+                <div class="modal-field">
+                    <label>UUID</label>
+                    <span style="font-size:11px;word-break:break-all">${data.uuid}</span>
+                </div>
+                <div class="modal-field">
+                    <label>标注信息</label>
+                    <span>${data.atrID} | ${data.date} | ${data.user}</span>
+                </div>
+            `;
+
+            // 全局标签
+            if (data.global_tags && Object.keys(data.global_tags).length > 0) {
+                html += `<div class="modal-field"><label>全局标签</label>`;
+                for (const [key, values] of Object.entries(data.global_tags)) {
+                    if (Array.isArray(values) && values.length > 0) {
+                        html += `
+                            <div class="tag-group">
+                                <div class="tag-group-title">${key}</div>
+                                <div class="tag-list">
+                                    ${values.map(v => `<span class="anno-tag objects">${v}</span>`).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                html += `</div>`;
+            }
+
+            // 色彩条
+            if (data.color_bar && data.color_bar.length > 0) {
+                html += `
+                    <div class="modal-field">
+                        <label>色彩构成</label>
+                        <div class="color-bar">
+                            ${data.color_bar.map(c => `
+                                <div class="color-segment" style="background:${c.color};flex:${parseInt(c.percentage) || 1}">
+                                    ${c.percentage}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 局部标注
+            if (data.local_annotations && data.local_annotations.length > 0) {
+                html += `
+                    <div class="modal-field">
+                        <label>局部标注 (${data.local_annotations.length} 个区域)</label>
+                        <div class="local-anno-list">
+                            ${data.local_annotations.map((ann, i) => `
+                                <div class="local-anno-item" id="localAnno${i}"
+                                     onmouseenter="highlightArea(${i}, true)"
+                                     onmouseleave="highlightArea(${i}, false)">
+                                    <div style="font-size:11px;color:#999;margin-bottom:4px">区域 ${i + 1} [${ann.bbox.join(', ')}]</div>
+                                    <div>${ann.objects.map(o => `<span class="anno-tag objects">${o}</span>`).join('')}</div>
+                                    <div>${ann.techniques.map(t => `<span class="anno-tag techniques">${t}</span>`).join('')}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            info.innerHTML = html;
+        }
+
+        function drawOverlay(data) {
+            const canvas = document.getElementById('overlayCanvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+
+            // 被云端切割的图提示
+            const area = canvas.parentElement;
+            let warn = area.querySelector('.trunc-warn');
+            if (data.image_truncated) {
+                if (!warn) {
+                    warn = document.createElement('div');
+                    warn.className = 'trunc-warn';
+                    warn.style.cssText = 'background:#fff3cd;color:#856404;padding:6px 12px;border-radius:4px;margin:6px 0;font-size:13px;';
+                    area.insertBefore(warn, canvas);
+                }
+                warn.textContent = '⚠ 此图云端存储被切割，显示的是部分画面，标注框位置可能有偏差';
+            } else if (warn) {
+                warn.remove();
+            }
+
+            img.onload = function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.style.maxWidth = '100%';
+                canvas.style.maxHeight = '80vh';
+
+                // 横长卷（宽高比>2）：切换为固定高度+横向滚动模式
+                const area = canvas.parentElement;
+                if (img.width / img.height > 2) {
+                    area.classList.add('wide-scroll');
+                } else {
+                    area.classList.remove('wide-scroll');
+                }
+
+                ctx.drawImage(img, 0, 0);
+
+                // 计算缩放比例：优先用元数据，fallback 用实际图片尺寸
+                const imgSize = data.image_size && data.image_size.length === 2
+                    ? data.image_size
+                    : [img.width, img.height];
+                const origW = imgSize[0];
+                const origH = imgSize[1];
+                const canvasW = canvas.width;
+                const canvasH = canvas.height;
+                const scale = Math.min(canvasW / origW, canvasH / origH);
+                const drawW = origW * scale;
+                const drawH = origH * scale;
+                const offsetX = (canvasW - drawW) / 2;
+                const offsetY = (canvasH - drawH) / 2;
+
+                // 绘制bbox
+                if (data.local_annotations) {
+                    data.local_annotations.forEach((ann, i) => {
+                        const color = ANNO_COLORS[i % ANNO_COLORS.length];
+                        let sx1, sy1, sw, sh;
+                        if (ann.bbox_frac) {
+                            // 归一化坐标：直接乘canvas尺寸，与image_size无关（长卷等大图最稳）
+                            sx1 = ann.bbox_frac[0] * canvasW;
+                            sy1 = ann.bbox_frac[1] * canvasH;
+                            sw = (ann.bbox_frac[2] - ann.bbox_frac[0]) * canvasW;
+                            sh = (ann.bbox_frac[3] - ann.bbox_frac[1]) * canvasH;
+                        } else {
+                            // 兼容旧数据：原图坐标按image_size缩放
+                            const [x1, y1, x2, y2] = ann.bbox;
+                            sx1 = offsetX + x1 * scale;
+                            sy1 = offsetY + y1 * scale;
+                            sw = (x2 - x1) * scale;
+                            sh = (y2 - y1) * scale;
+                        }
+
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(sx1, sy1, sw, sh);
+
+                        // 标签背景
+                        const label = ann.objects.join(', ') || `区域${i + 1}`;
+                        ctx.font = '12px sans-serif';
+                        const textWidth = ctx.measureText(label).width;
+                        ctx.fillStyle = color;
+                        ctx.fillRect(sx1, Math.max(0, sy1 - 18), textWidth + 8, 18);
+
+                        // 标签文字
+                        ctx.fillStyle = 'white';
+                        ctx.fillText(label, sx1 + 4, Math.max(14, sy1 - 4));
+                    });
+                }
+
+                // 更新图例
+                updateLegend(data);
+            };
+
+            img.onerror = function() {
+                canvas.width = 600;
+                canvas.height = 400;
+                ctx.fillStyle = '#333';
+                ctx.fillRect(0, 0, 600, 400);
+                ctx.fillStyle = '#999';
+                ctx.font = '20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('图片加载失败', 300, 200);
+            };
+
+            // 由服务器检测图片是否被云端切割过：切割过→瓦片拼接完整图，否则→云端原图
+            img.src = `api/scroll/${data.uuid}`;
+        }
+
+        function updateLegend(data) {
+            const legend = document.getElementById('legend');
+            if (!data.local_annotations || data.local_annotations.length === 0) {
+                legend.style.display = 'none';
+                return;
+            }
+
+            legend.style.display = 'block';
+            legend.innerHTML = data.local_annotations.map((ann, i) => {
+                const color = ANNO_COLORS[i % ANNO_COLORS.length];
+                const label = ann.objects.join(', ') || `区域${i + 1}`;
+                return `
+                    <div class="legend-item">
+                        <div class="legend-color" style="background:${color}"></div>
+                        <span>${label}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function highlightArea(index, enter) {
+            // 高亮侧边栏
+            const item = document.getElementById(`localAnno${index}`);
+            if (item) item.classList.toggle('highlight', enter);
+
+            // 高亮canvas上的区域
+            if (currentModalData && currentModalData.local_annotations) {
+                drawOverlay(currentModalData);
+                if (enter) {
+                    const canvas = document.getElementById('overlayCanvas');
+                    const ctx = canvas.getContext('2d');
+                    const ann = currentModalData.local_annotations[index];
+
+                    ctx.strokeStyle = ANNO_COLORS[index % ANNO_COLORS.length];
+                    ctx.lineWidth = 4;
+                    if (ann.bbox_frac) {
+                        // 归一化坐标（与drawOverlay对齐）
+                        ctx.strokeRect(
+                            ann.bbox_frac[0] * canvas.width,
+                            ann.bbox_frac[1] * canvas.height,
+                            (ann.bbox_frac[2] - ann.bbox_frac[0]) * canvas.width,
+                            (ann.bbox_frac[3] - ann.bbox_frac[1]) * canvas.height
+                        );
+                    } else {
+                        const [x1, y1, x2, y2] = ann.bbox;
+                        const imgSize = currentModalData.image_size || [1000, 1000];
+                        const origW = imgSize[0];
+                        const origH = imgSize[1];
+                        const scale = Math.min(canvas.width / origW, canvas.height / origH);
+                        const offsetX = (canvas.width - origW * scale) / 2;
+                        const offsetY = (canvas.height - origH * scale) / 2;
+                        ctx.strokeRect(
+                            offsetX + x1 * scale,
+                            offsetY + y1 * scale,
+                            (x2 - x1) * scale,
+                            (y2 - y1) * scale
+                        );
+                    }
+                }
+            }
+        }
+
+        function navigateModal(dir) {
+            const newIdx = modalIndex + dir;
+            if (newIdx < 0 || newIdx >= filteredData.length) return;
+            modalIndex = newIdx;
+            showDetail(filteredData[newIdx].uuid);
+        }
+
+        function updateNavBtns() {
+            document.getElementById('modalPrevBtn').disabled = modalIndex <= 0;
+            document.getElementById('modalNextBtn').disabled = modalIndex >= filteredData.length - 1;
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('show');
+            currentModalData = null;
+        }
+
+        // ESC关闭弹窗
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+            if (e.key === 'ArrowLeft') navigateModal(-1);
+            if (e.key === 'ArrowRight') navigateModal(1);
+        });
+
+        // 点击遮罩关闭
+        document.getElementById('detailModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('detailModal')) closeModal();
+        });
+
+        init();
+    </script>
+</body>
+</html>

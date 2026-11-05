@@ -1,0 +1,58 @@
+[
+ {
+  "uuid": "11111111-1111-4111-8111-111111111111",
+  "category": "女",
+  "group": 1,
+  "detections": [
+   {
+    "label": "person",
+    "confidence": 0.912,
+    "source": "dino",
+    "bbox": [
+     10,
+     20,
+     300,
+     700
+    ]
+   },
+   {
+    "label": "fan",
+    "confidence": 0.51,
+    "source": "dino",
+    "bbox": [
+     320,
+     410,
+     420,
+     500
+    ]
+   }
+  ],
+  "labels": [
+   "person",
+   "fan"
+  ],
+  "num_detections": 2
+ },
+ {
+  "uuid": "22222222-2222-4222-8222-222222222222",
+  "category": "男",
+  "group": 2,
+  "detections": [
+   {
+    "label": "person",
+    "confidence": 0.655,
+    "source": "dino",
+    "bbox": [
+     5,
+     6,
+     100,
+     400
+    ]
+   }
+  ],
+  "labels": [
+   "person"
+  ],
+  "num_detections": 1
+ }
+]

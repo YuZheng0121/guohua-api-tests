@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片详情 - 中国绘画分析系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: #1a1a1a;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 顶部导航 */
+        .header {
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+            color: white;
+            padding: 12px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 50px;
+        }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .header .back-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 6px 16px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .header .back-btn:hover { background: rgba(255,255,255,0.1); }
+
+        /* 主体布局 */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+
+        /* 左侧图片区域 */
+        .image-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1a1a1a;
+            position: relative;
+            overflow: hidden;
+        }
+        .image-area img {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+        }
+        .canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* 右侧信息栏 */
+        .info-panel {
+            width: 320px;
+            background: #fafafa;
+            border-left: 1px solid #333;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .info-section {
+            background: white;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            border: 1px solid #eee;
+        }
+        .info-section label {
+            font-size: 11px;
+            color: #888;
+            display: block;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .info-section span {
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        /* 标签 */
+        .labels-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .label-tag {
+            padding: 5px 10px;
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+            color: white;
+            border-radius: 15px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .label-tag:hover { opacity: 0.8; }
+        .label-tag.inactive {
+            background: #ddd;
+            color: #999;
+            opacity: 0.5;
+        }
+
+        /* 开关 */
+        .toggle-group {
+            display: flex;
+            gap: 15px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #fdf6ee 0%, #f5e6d3 100%);
+            border-radius: 10px;
+            margin-bottom: 12px;
+            border: 1px solid #e8d4bc;
+        }
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #555;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #ccc;
+            border-radius: 20px;
+            transition: 0.3s;
+        }
+        .toggle-slider:before {
+            content: "";
+            position: absolute;
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: #8b4513; }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(16px); }
+
+        /* 关键点图例 */
+        .legend-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 12px;
+            color: #444;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .legend-item:last-child { border-bottom: none; }
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        .legend-item .part-name { flex: 1; }
+        .legend-item .part-range { color: #999; font-size: 10px; }
+
+        /* 导航按钮 */
+        .nav-buttons {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        .nav-btn {
+            padding: 10px 24px;
+            background: rgba(139, 69, 19, 0.9);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .nav-btn:hover { background: rgba(139, 69, 19, 1); }
+        .nav-btn:disabled { background: #666; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 id="pageTitle">图片详情</h1>
+        <a href="images" class="back-btn">← 返回列表</a>
+    </div>
+
+    <div class="main-container">
+        <div class="image-area">
+            <img id="mainImage" src="" alt="">
+            <canvas id="overlayCanvas" class="canvas-overlay"></canvas>
+        </div>
+        <div class="info-panel" id="infoPanel">
+            <!-- 动态生成 -->
+        </div>
+    </div>
+
+    <div class="nav-buttons">
+        <button class="nav-btn" id="prevBtn" onclick="navigate(-1)">← 上一张</button>
+        <button class="nav-btn" id="nextBtn" onclick="navigate(1)">下一张 →</button>
+    </div>
+
+    <script>
+        const BODY_PARTS = {
+            head: { color: '#FF6B6B', range: [0, 27], label: '头部' },
+            torso: { color: '#4A90D9', range: [28, 67], label: '躯干' },
+            left_arm: { color: '#7BC67E', range: [68, 107], label: '左臂' },
+            right_arm: { color: '#FFB347', range: [108, 147], label: '右臂' },
+            left_leg: { color: '#9B59B6', range: [148, 227], label: '左腿' },
+            right_leg: { color: '#8B4513', range: [228, 307], label: '右腿' }
+        };
+
+        const CIT_COLORS = {
+            'person': '#FF6B6B', 'buddha_deity': '#9B59B6', 'landscape': '#8E44AD',
+            'water': '#3498DB', 'plants': '#27AE60', 'architecture': '#F39C12',
+            'animals': '#E74C3C', 'atmosphere': '#95A5A6', 'transport': '#1ABC9C',
+            'objects': '#E67E22', 'calligraphy': '#34495E'
+        };
+
+        // DINO-X原始类别颜色
+        const DINO_COLORS = {
+            'person': '#FF6B6B', 'man': '#E74C3C', 'woman': '#FF6B6B',
+            'child': '#FFB347', 'boy': '#FFB347', 'girl': '#FFB347',
+            'face': '#FF8A80', 'hair': '#D4A5A5',
+            'tree': '#27AE60', 'flower': '#E91E63', 'plant': '#27AE60', 'grass': '#8BC34A',
+            'building': '#F39C12', 'house': '#F39C12', 'temple': '#E67E22', 'bridge': '#8D6E63',
+            'mountain': '#795548', 'rock': '#9E9E9E', 'water': '#3498DB', 'river': '#3498DB',
+            'boat': '#1ABC9C', 'ship': '#1ABC9C',
+            'cloud': '#90CAF9', 'sky': '#81D4FA', 'sun': '#FFC107', 'moon': '#B0BEC5',
+            'animal': '#FF9800', 'bird': '#FF5722', 'horse': '#8D6E63',
+            'calligraphy': '#34495E', 'painting': '#34495E', 'scroll': '#34495E',
+            'object': '#E67E22', 'book': '#795548', 'vase': '#9C27B0',
+            'clothing': '#F48FB1', 'robe': '#F48FB1', 'dress': '#F48FB1',
+            'hat': '#795548', 'shoe': '#795548', 'footwear': '#795548',
+            'hand': '#FFAB91', 'arm': '#FFAB91', 'foot': '#FFAB91', 'leg': '#FFAB91',
+            'eye': '#80DEEA', 'mouth': '#EF9A9A', 'text': '#34495E'
+        };
+
+        let currentData = null;
+        let selectedLabels = new Set();
+        let selectedDinoLabels = new Set();
+        let allImages = [];
+        let currentIndex = 0;
+
+        // 从URL获取UUID
+        const urlParams = new URLSearchParams(window.location.search);
+        const uuid = urlParams.get('uuid');
+
+        // 加载数据
+        Promise.all([
+            fetch('api/images?page=1&per_page=20000').then(r => r.json()),
+            fetch(`api/image/${uuid}`).then(r => r.json())
+        ]).then(([listResult, detail]) => {
+            allImages = listResult.items || [];
+            currentIndex = allImages.findIndex(img => img.uuid === uuid);
+            currentData = detail;
+            selectedLabels = new Set(detail.cit?.labels || detail.detection?.labels || []);
+            selectedDinoLabels = new Set(detail.dino?.labels || []);
+            renderInfo(detail);
+            loadImage(detail);
+        });
+
+        function renderInfo(data) {
+            const panel = document.getElementById('infoPanel');
+            let html = `
+                <div class="info-section"><label>UUID</label><span style="font-size:12px;word-break:break-all">${data.uuid}</span></div>
+                <div class="info-section"><label>分类</label><span>${data.category || '未知'}</span></div>
+            `;
+
+            // CIT标签
+            if (data.cit && data.cit.labels && data.cit.labels.length > 0) {
+                html += `
+                    <div class="info-section">
+                        <label style="display:flex;justify-content:space-between;align-items:center">CIT检测标签 <span style="font-size:11px;color:#8b4513;cursor:pointer;text-transform:none" onclick="toggleAllCITLabels()">全选/全不选</span></label>
+                        <div class="labels-container">
+                            ${data.cit.labels.map(l => `<span class="label-tag cit-tag" data-label="${l}" onclick="toggleCITLabel('${l}')">${l}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="info-section"><label>CIT检测数</label><span>${data.cit.num_detections || 0}</span></div>
+                `;
+            } else if (data.detection) {
+                html += `
+                    <div class="info-section">
+                        <label>检测标签</label>
+                        <div class="labels-container">
+                            ${data.detection.labels.map(l => `<span class="label-tag cit-tag" data-label="${l}" onclick="toggleCITLabel('${l}')">${l}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="info-section"><label>检测人物数</label><span>${data.detection.num_detections || 0}</span></div>
+                `;
+            }
+
+            // DINO标签
+            if (data.dino && data.dino.labels && data.dino.labels.length > 0) {
+                html += `
+                    <div class="info-section">
+                        <label style="display:flex;justify-content:space-between;align-items:center">DINO检测标签 <span style="font-size:11px;color:#8b4513;cursor:pointer;text-transform:none" onclick="toggleAllDinoLabels()">全选/全不选</span></label>
+                        <div class="labels-container">
+                            ${data.dino.labels.map(l => `<span class="label-tag dino-tag" data-label="${l}" onclick="toggleDinoLabel('${l}')">${l}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="info-section"><label>DINO检测数</label><span>${data.dino.num_detections || 0}</span></div>
+                `;
+            }
+
+            // 开关组
+            const hasKeypoints = data.pose && data.pose.keypoints && data.pose.keypoints.length > 0;
+            const hasCIT = data.cit && data.cit.detections && data.cit.detections.length > 0;
+            const hasDINO = data.dino && data.dino.detections && data.dino.detections.length > 0;
+
+            if (hasKeypoints || hasCIT || hasDINO) {
+                html += `<div class="toggle-group">`;
+                if (hasKeypoints) {
+                    html += `
+                        <div class="toggle-item">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="showKeypoints" checked onchange="drawOverlay()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            关键点
+                        </div>
+                    `;
+                }
+                if (hasCIT) {
+                    html += `
+                        <div class="toggle-item">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="showCIT" checked onchange="toggleCIT()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            CIT检测框
+                        </div>
+                    `;
+                }
+                if (hasDINO) {
+                    html += `
+                        <div class="toggle-item">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="showDINO" checked onchange="toggleDINO()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            DINO检测框
+                        </div>
+                    `;
+                }
+                html += `</div>`;
+            }
+
+            // 关键点详情
+            if (data.pose) {
+                html += `
+                    <div class="info-section"><label>关键点</label><span>${data.pose.total_keypoints}个</span></div>
+                    <div class="info-section"><label>高置信度关键点</label><span>${data.pose.keypoints.length}个</span></div>
+                    <div class="info-section">
+                        <label>关键点图例</label>
+                        ${Object.entries(BODY_PARTS).map(([key, part]) => `
+                            <div class="legend-item">
+                                <span class="color-dot" style="background:${part.color}"></span>
+                                <span class="part-name">${part.label}</span>
+                                <span class="part-range">(${part.range[0]}-${part.range[1]})</span>
+                                <label class="toggle-switch" style="margin-left:8px">
+                                    <input type="checkbox" class="part-toggle" data-part="${key}" checked onchange="drawOverlay()">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            panel.innerHTML = html;
+            updateNavButtons();
+        }
+
+        function loadImage(data) {
+            const img = document.getElementById('mainImage');
+            img.src = `api/thumb/${data.uuid}`;
+            document.getElementById('pageTitle').textContent = data.category || '图片详情';
+
+            if (img.complete && img.naturalWidth > 0) {
+                drawOverlay();
+            } else {
+                img.onload = drawOverlay;
+            }
+        }
+
+        function drawOverlay() {
+            if (!currentData) return;
+
+            const canvas = document.getElementById('overlayCanvas');
+            const img = document.getElementById('mainImage');
+            const ctx = canvas.getContext('2d');
+
+            const imgRect = img.getBoundingClientRect();
+            const containerRect = img.parentElement.getBoundingClientRect();
+
+            canvas.width = containerRect.width;
+            canvas.height = containerRect.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const offsetX = imgRect.left - containerRect.left;
+            const offsetY = imgRect.top - containerRect.top;
+            const drawW = imgRect.width;
+            const drawH = imgRect.height;
+
+            const showKeypoints = document.getElementById('showKeypoints')?.checked;
+            const showCIT = document.getElementById('showCIT')?.checked;
+            const showDINO = document.getElementById('showDINO')?.checked;
+
+            if (showKeypoints && currentData.pose && currentData.pose.keypoints.length > 0) {
+                drawKeypoints(ctx, currentData.pose.keypoints, drawW, drawH, offsetX, offsetY, currentData);
+            }
+            if (showCIT && currentData.cit && currentData.cit.detections) {
+                drawCITBboxes(ctx, currentData.cit.detections, drawW, drawH, offsetX, offsetY, currentData);
+            }
+            if (showDINO && currentData.dino && currentData.dino.detections) {
+                drawDinoBboxes(ctx, currentData.dino.detections, drawW, drawH, offsetX, offsetY, currentData);
+            }
+        }
+
+        function drawKeypoints(ctx, keypoints, drawW, drawH, offsetX, offsetY, data) {
+            const imgSize = data.pose.image_size || [1000, 1000];
+            const origW = imgSize[0];
+            const origH = imgSize[1];
+            const scale = Math.min(drawW / origW, drawH / origH);
+
+            const partKeys = Object.keys(BODY_PARTS);
+            keypoints.forEach((kp, idx) => {
+                let partIdx = -1;
+                for (let i = 0; i < partKeys.length; i++) {
+                    const part = BODY_PARTS[partKeys[i]];
+                    if (idx >= part.range[0] && idx <= part.range[1]) {
+                        partIdx = i;
+                        break;
+                    }
+                }
+
+                const toggle = document.querySelector(`.part-toggle[data-part="${partKeys[partIdx]}"]`);
+                if (toggle && !toggle.checked) return;
+
+                let color = '#888';
+                if (partIdx >= 0) color = Object.values(BODY_PARTS)[partIdx].color;
+
+                ctx.beginPath();
+                ctx.arc(offsetX + kp.x * scale, offsetY + kp.y * scale, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+        }
+
+        function drawCITBboxes(ctx, detections, drawW, drawH, offsetX, offsetY, data) {
+            const imgSize = data.cit?.image_size || data.pose?.image_size || [1000, 1000];
+            const origW = imgSize[0];
+            const origH = imgSize[1];
+            const scale = Math.min(drawW / origW, drawH / origH);
+
+            detections.forEach(det => {
+                if (!selectedLabels.has(det.label)) return;
+                const [x1, y1, x2, y2] = det.bbox;
+                const mainCat = det.label.split('.')[0];
+                const color = CIT_COLORS[mainCat] || '#888';
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(
+                    offsetX + x1 * scale,
+                    offsetY + y1 * scale,
+                    (x2 - x1) * scale,
+                    (y2 - y1) * scale
+                );
+
+                const label = `${det.label} ${(det.confidence * 100).toFixed(0)}%`;
+                ctx.font = '12px Arial';
+                const textW = ctx.measureText(label).width;
+                const lx = offsetX + x1 * scale;
+                const ly = offsetY + y1 * scale - 18;
+                ctx.fillStyle = color;
+                ctx.fillRect(lx, ly, textW + 6, 18);
+                ctx.fillStyle = '#fff';
+                ctx.fillText(label, lx + 3, ly + 13);
+            });
+        }
+
+        function toggleLabel(label) {
+            const tag = document.querySelector(`.label-tag[data-label="${label}"]`);
+            if (selectedLabels.has(label)) {
+                selectedLabels.delete(label);
+                tag.classList.add('inactive');
+            } else {
+                selectedLabels.add(label);
+                tag.classList.remove('inactive');
+            }
+            drawOverlay();
+        }
+
+        function toggleCIT() {
+            const showCIT = document.getElementById('showCIT').checked;
+            const labelTags = document.querySelectorAll('.label-tag');
+            labelTags.forEach(tag => {
+                const label = tag.getAttribute('data-label');
+                if (showCIT) {
+                    tag.classList.remove('inactive');
+                    selectedLabels.add(label);
+                } else {
+                    tag.classList.add('inactive');
+                    selectedLabels.delete(label);
+                }
+            });
+            drawOverlay();
+        }
+
+        function toggleAllLabels() {
+            const labelTags = document.querySelectorAll('.label-tag');
+            const allSelected = labelTags.length > 0 && Array.from(labelTags).every(t => !t.classList.contains('inactive'));
+            labelTags.forEach(tag => {
+                const label = tag.getAttribute('data-label');
+                if (allSelected) {
+                    tag.classList.add('inactive');
+                    selectedLabels.delete(label);
+                } else {
+                    tag.classList.remove('inactive');
+                    selectedLabels.add(label);
+                }
+            });
+            drawOverlay();
+        }
+
+        function navigate(dir) {
+            const newIdx = currentIndex + dir;
+            if (newIdx < 0 || newIdx >= allImages.length) return;
+            currentIndex = newIdx;
+            const newUuid = allImages[newIdx].uuid;
+            window.location.search = `?uuid=${newUuid}`;
+        }
+
+        function updateNavButtons() {
+            document.getElementById('prevBtn').disabled = currentIndex <= 0;
+            document.getElementById('nextBtn').disabled = currentIndex >= allImages.length - 1;
+        }
+
+        // 窗口大小变化时重绘
+        window.addEventListener('resize', () => {
+            setTimeout(drawOverlay, 100);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+{
+ "11111111-1111-4111-8111-111111111111": {
+  "atrID": "ATR0001",
+  "date": "2022-11-16",
+  "user": "annotator_a",
+  "global_tags": {
+   "画意": [
+    "闲适"
+   ],
+   "构图": [
+    "立轴"
+   ]
+  },
+  "local_annotations": [
+   {
+    "areaId": 1,
+    "bbox": [
+     870,
+     302,
+     1380,
+     916
+    ],
+    "objects": [
+     "仕女"
+    ],
+    "techniques": [
+     "白描"
+    ],
+    "bbox_frac": [
+     0.42,
+     0.19,
+     0.67,
+     0.58
+    ]
+   },
+   {
+    "areaId": 2,
+    "bbox": [
+     1040,
+     822,
+     1452,
+     1962
+    ],
+    "objects": [
+     "仕女"
+    ],
+    "techniques": [
+     "设色"
+    ],
+    "bbox_frac": [
+     0.51,
+     0.52,
+     0.71,
+     0.83
+    ]
+   }
+  ],
+  "color_bar": []
+ },
+ "22222222-2222-4222-8222-222222222222": {
+  "atrID": "",
+  "date": "",
+  "user": "annotator_b",
+  "global_tags": {},
+  "local_annotations": [],
+  "color_bar": []
+ }
+}

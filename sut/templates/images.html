@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <m
+    eta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片查看 - 中国绘画分析系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: #f5f5f0;
+        }
+
+        /* 顶部导航 */
+        .header {
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+            color: white;
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid #d2691e;
+        }
+        .header h1 { font-size: 32px; font-weight: 600; margin-bottom: 8px; }
+        .header .subtitle { font-size: 16px; opacity: 0.9; }
+
+        /* 导航栏 */
+        .nav {
+            background: #fff;
+            padding: 14px 40px;
+            display: flex;
+            justify-content: space-evenly;
+            border-bottom: 1px solid #ddd;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .nav a {
+            color: #333;
+            text-decoration: none;
+            font-size: 18px;
+            padding: 8px 0;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .nav a:hover, .nav a.active {
+            color: #8b4513;
+            border-bottom-color: #8b4513;
+        }
+
+        /* 主体 */
+        .container { width: 100%; margin: 0 auto; padding: 20px; }
+
+        /* 统计卡片 */
+        .stats-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 25px 40px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-evenly;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .stat-item { text-align: center; }
+        .stat-number { font-size: 36px; font-weight: bold; color: #8b4513; }
+        .stat-label { font-size: 14px; color: #666; margin-top: 6px; }
+
+        /* 工具栏 */
+        .toolbar {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 25px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .result-count { color: #666; font-size: 13px; }
+        .search-box {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 250px;
+        }
+
+        .download-btn {
+            padding: 8px 20px;
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .download-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        /* 主体布局 */
+        .main-layout {
+            display: flex;
+            gap: 20px;
+        }
+
+        /* 左侧筛选栏 */
+        .filter-sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .filter-header {
+            padding: 15px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .filter-header span {
+            font-size: 14px;
+            color: #333;
+            font-weight: bold;
+        }
+        .filter-header a {
+            font-size: 12px;
+            color: #8b4513;
+            text-decoration: none;
+        }
+        .filter-section {
+            border-bottom: 1px solid #eee;
+        }
+        .filter-title {
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .filter-title:hover { background: #f9f9f9; }
+        .filter-title span:first-child {
+            font-size: 14px;
+            color: #333;
+        }
+        .filter-count {
+            margin-left: 5px;
+            font-size: 12px;
+            color: #999;
+        }
+        .arrow {
+            margin-left: auto;
+            font-size: 14px;
+            color: #999;
+            transition: transform 0.3s;
+        }
+        .filter-title.expanded .arrow {
+            transform: rotate(90deg);
+        }
+        .filter-options {
+            display: none;
+            padding: 0 15px 15px;
+        }
+        .filter-options.show { display: block; }
+        .filter-option {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 13px;
+            color: #555;
+            cursor: pointer;
+        }
+        .filter-option:hover { color: #8b4513; }
+        .filter-option input { margin-right: 8px; }
+        .filter-option .count {
+            margin-left: auto;
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* 右侧内容区 */
+        .content-area {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* 图片网格 */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .painting-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        .painting-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        .painting-image {
+            width: 100%;
+            height: 240px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 64px;
+            position: relative;
+        }
+        .painting-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .person-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(139, 69, 19, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        .painting-info { padding: 12px; }
+        .painting-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 6px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .painting-meta { font-size: 12px; color: #666; line-height: 1.6; }
+
+        /* 详情弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 95vw;
+            max-width: 1400px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        .modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .modal-title {
+            font-size: 24px;
+            color: #333;
+            margin: 0;
+            font-weight: 600;
+        }
+        .modal-close {
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .modal-close:hover { color: #333; background: #f0f0f0; }
+        .modal-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .modal-image {
+            flex: 1;
+            position: relative;
+            min-width: 0;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .modal-image img {
+            max-height: 85vh !important;
+            width: auto !important;
+            height: auto !important;
+            display: block !important;
+            object-fit: unset !important;
+        }
+        .modal-canvas-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .modal-canvas-wrapper canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .modal-info {
+            width: 350px;
+            flex-shrink: 0;
+            overflow-y: auto;
+            padding: 25px;
+            border-left: 1px solid #eee;
+            background: #fafafa;
+        }
+        .modal-field {
+            padding: 14px 16px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            border: 1px solid #eee;
+        }
+        .modal-field label { font-size: 12px; color: #888; display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .modal-field span { font-size: 15px; color: #333; font-weight: 500; }
+        .modal-labels { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .modal-label {
+            padding: 5px 12px;
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        .modal-label.selectable {
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            text-transform: none;
+        }
+        .modal-label.selectable input { display: none; }
+        .modal-toggles {
+            display: flex;
+            gap: 20px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, #fdf6ee 0%, #f5e6d3 100%);
+            border-radius: 10px;
+            margin-bottom: 14px;
+            border: 1px solid #e8d4bc;
+        }
+        .modal-toggles label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #ccc;
+            border-radius: 20px;
+            transition: 0.3s;
+        }
+        .toggle-slider:before {
+            content: "";
+            position: absolute;
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: #8b4513; }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); }
+        .keypoint-legend {
+            padding: 16px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #eee;
+        }
+        .keypoint-legend h4 {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 0;
+            font-size: 14px;
+            color: #444;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .legend-item:last-child { border-bottom: none; }
+        .legend-item .color-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 10px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .legend-item .part-name { flex: 1; font-weight: 500; }
+        .legend-item .part-range {
+            color: #999;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>图片查看</h1>
+            <div class="subtitle">查看姿态关键点和物体检测结果</div>
+        </div>
+        <div>
+            <a href="shinu" style="color: white; text-decoration: none; font-size: 14px;">明清仕女图典藏 →</a>
+        </div>
+    </div>
+
+    <div class="nav">
+        <a href=".">统计概览</a>
+        <a href="images" class="active">图片查看</a>
+        <a href="shinu">明清仕女图</a>
+        <a href="human">人工标注</a>
+    </div>
+
+    <div class="container">
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-number" id="totalCount">-</div>
+                <div class="stat-label">总图片数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="femaleCount">-</div>
+                <div class="stat-label">女</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="maleCount">-</div>
+                <div class="stat-label">男</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="mixedCount">-</div>
+                <div class="stat-label">有男有女</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="sceneCount">-</div>
+                <div class="stat-label">点景人物</div>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <!-- 左侧筛选栏 -->
+            <div class="filter-sidebar">
+                <div class="filter-header">
+                    <span>查询条件</span>
+                    <a href="#" onclick="resetAllFilters(); return false;">重新查询</a>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-title" onclick="toggleSection(this)">
+                        <span>分类</span>
+                        <span class="filter-count">(4)</span>
+                        <span class="arrow">›</span>
+                    </div>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="category" value="女"> 女
+                            <span class="count" id="filterFemaleCount">(0)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="category" value="男"> 男
+                            <span class="count" id="filterMaleCount">(0)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="category" value="有男有女"> 有男有女
+                            <span class="count" id="filterMixedCount">(0)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="category" value="点景人物"> 点景人物
+                            <span class="count" id="filterSceneCount">(0)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-title" onclick="toggleSection(this)">
+                        <span>版权状态</span>
+                        <span class="filter-count">(2)</span>
+                        <span class="arrow">›</span>
+                    </div>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="copyright" value="是"> 公开版权
+                            <span class="count" id="filterCopyrightCount">(0)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="copyright" value="否"> 非公开版权
+                            <span class="count" id="filterNonCopyrightCount">(0)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-title" onclick="toggleSection(this)">
+                        <span>朝代</span>
+                        <span class="filter-count" id="dynastyFilterCount">(0)</span>
+                        <span class="arrow">›</span>
+                    </div>
+                    <div class="filter-options" id="dynastyFilters">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-title" onclick="toggleSection(this)">
+                        <span>检测标签</span>
+                        <span class="filter-count" id="labelFilterCount">(0)</span>
+                        <span class="arrow">›</span>
+                    </div>
+                    <div class="filter-options" id="labelFilters">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧内容区 -->
+            <div class="content-area">
+                <div class="toolbar">
+                    <div class="result-count">共 <strong id="resultCount">0</strong> 笔</div>
+                    <button class="download-btn" onclick="downloadFiltered()">下载</button>
+                    <input type="text" class="search-box" placeholder="搜索UUID..." id="searchInput">
+                </div>
+
+                <div class="gallery-grid" id="galleryGrid">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">分类名称</h2>
+                <span class="modal-close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="modal-image">
+                    <img id="modalImage" src="" alt="">
+                    <div class="modal-canvas-wrapper">
+                        <canvas id="overlayCanvas"></canvas>
+                    </div>
+                    <div style="position:absolute;bottom:15px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:10">
+                        <button class="download-btn" id="modalPrevBtn" onclick="navigateModal(-1)" style="opacity:0.8">← 上一张</button>
+                        <button class="download-btn" id="modalNextBtn" onclick="navigateModal(1)" style="opacity:0.8">下一张 →</button>
+                    </div>
+                </div>
+                <div class="modal-info" id="modalInfo">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allImageData = []; let realTotalCount = 0; let realCategoryCount = {}; let realCopyrightCount = 0;
+        let filteredData = [];
+        let currentImageData = null;
+        let publicCopyrightIds = [];
+        let publicCopyrightByCategory = {};
+        let currentPage = 1;
+        let isLoadingMore = false;
+        let hasMoreData = true;
+        let copyrightDataLoaded = false;
+
+        const BODY_PARTS = {
+            head: { color: '#FF6B6B', range: [0, 27], label: '头部' },
+            torso: { color: '#4A90D9', range: [28, 67], label: '躯干' },
+            left_arm: { color: '#7BC67E', range: [68, 107], label: '左臂' },
+            right_arm: { color: '#FFB347', range: [108, 147], label: '右臂' },
+            left_leg: { color: '#9B59B6', range: [148, 227], label: '左腿' },
+            right_leg: { color: '#8B4513', range: [228, 307], label: '右腿' }
+        };
+
+        // 加载数据
+        Promise.all([
+            fetch('api/images?page=1&per_page=20000').then(res => res.json()),
+            fetch('api/images_count').then(res => res.json()),
+            fetch('api/public_copyright_ids').then(res => res.json()),
+            fetch('api/public_copyright_ids?category=男').then(res => res.json()),
+            fetch('api/public_copyright_ids?category=女').then(res => res.json()),
+            fetch('api/public_copyright_ids?category=有男有女').then(res => res.json()),
+            fetch('api/public_copyright_ids?category=点景人物').then(res => res.json()),
+            fetch('api/stats').then(res => res.json())
+        ]).then(([result, countResult, allIds, maleIds, femaleIds, mixedIds, sceneIds, statsResult]) => {
+            const images = result.items || result; // 兼容新旧格式
+            allImageData = images; realTotalCount = countResult.total; realCategoryCount = countResult.category_count; realCopyrightCount = countResult.copyright_count;
+            window._fullDynastyFreq = statsResult.dynasty_freq || {};
+            filteredData = [...images];
+            currentPage = 1;
+            hasMoreData = images.length >= 200;
+            publicCopyrightIds = allIds;
+            publicCopyrightByCategory['男'] = maleIds;
+            publicCopyrightByCategory['女'] = femaleIds;
+            publicCopyrightByCategory['有男有女'] = mixedIds;
+            publicCopyrightByCategory['点景人物'] = sceneIds;
+            copyrightDataLoaded = true;
+            
+            updateStats();
+            buildFilters();
+            applyFilters();
+        });
+
+        function updateStats() {
+            const categories = {};
+            allImageData.forEach(img => {
+                categories[img.category] = (categories[img.category] || 0) + 1;
+            });
+            
+            document.getElementById('totalCount').textContent = realTotalCount;
+            document.getElementById('femaleCount').textContent = realCategoryCount['女'] || 0;
+            document.getElementById('maleCount').textContent = realCategoryCount['男'] || 0;
+            document.getElementById('mixedCount').textContent = realCategoryCount['有男有女'] || 0;
+            document.getElementById('sceneCount').textContent = realCategoryCount['点景人物'] || 0;
+            
+            document.getElementById('filterFemaleCount').textContent = `(${realCategoryCount['女'] || 0})`;
+            document.getElementById('filterMaleCount').textContent = `(${realCategoryCount['男'] || 0})`;
+            document.getElementById('filterMixedCount').textContent = `(${realCategoryCount['有男有女'] || 0})`;
+            document.getElementById('filterSceneCount').textContent = `(${realCategoryCount['点景人物'] || 0})`;
+        }
+
+        function buildFilters() {
+            // 版权筛选计数
+            let copyrightCount = realCopyrightCount;
+            let nonCopyrightCount = realTotalCount - realCopyrightCount;
+            document.getElementById('filterCopyrightCount').textContent = `(${copyrightCount})`;
+            document.getElementById('filterNonCopyrightCount').textContent = `(${nonCopyrightCount})`;
+
+            // 朝代筛选 - 使用完整统计数据
+            const dynasties = {};
+            if (window._fullDynastyFreq) {
+                Object.assign(dynasties, window._fullDynastyFreq);
+                delete dynasties['未知'];
+            } else {
+                allImageData.forEach(img => {
+                    if (img.dynasty) {
+                        dynasties[img.dynasty] = (dynasties[img.dynasty] || 0) + 1;
+                    }
+                });
+            }
+
+            const dynastyContainer = document.getElementById('dynastyFilters');
+            const dynastyKeys = Object.keys(dynasties).sort();
+            document.getElementById('dynastyFilterCount').textContent = `(${dynastyKeys.length})`;
+
+            dynastyContainer.innerHTML = dynastyKeys.map(d => `
+                <label class="filter-option">
+                    <input type="checkbox" checked onchange="applyFilters()" data-filter="dynasty" value="${d}"> ${d}
+                    <span class="count">(${dynasties[d]})</span>
+                </label>
+            `).join('');
+
+            // 标签筛选
+            const labels = {};
+            allImageData.forEach(img => {
+                const lbls = (img.labels || []);
+                lbls.forEach(l => {
+                    labels[l] = (labels[l] || 0) + 1;
+                });
+            });
+
+            const labelContainer = document.getElementById('labelFilters');
+            const labelKeys = Object.keys(labels).sort();
+            document.getElementById('labelFilterCount').textContent = `(${labelKeys.length})`;
+
+            labelContainer.innerHTML = labelKeys.map(l => `
+                <label class="filter-option">
+                    <input type="checkbox" checked onchange="applyFilters()" data-filter="label" value="${l}"> ${l}
+                    <span class="count">(${labels[l]})</span>
+                </label>
+            `).join('');
+        }
+
+        function toggleSection(el) {
+            el.classList.toggle('expanded');
+            const options = el.nextElementSibling;
+            options.classList.toggle('show');
+        }
+
+        function applyFilters() {
+            const categoryCheckboxes = document.querySelectorAll('[data-filter="category"]:checked');
+            const copyrightCheckboxes = document.querySelectorAll('[data-filter="copyright"]:checked');
+            const dynastyCheckboxes = document.querySelectorAll('[data-filter="dynasty"]:checked');
+            const labelCheckboxes = document.querySelectorAll('[data-filter="label"]:checked');
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+
+            const selectedCategories = Array.from(categoryCheckboxes).map(cb => cb.value);
+            const selectedCopyrights = Array.from(copyrightCheckboxes).map(cb => cb.value);
+            const selectedDynasties = Array.from(dynastyCheckboxes).map(cb => cb.value);
+            const selectedLabels = Array.from(labelCheckboxes).map(cb => cb.value);
+
+            filteredData = allImageData.filter(img => {
+                // 分类筛选
+                if (!selectedCategories.includes(img.category)) return false;
+
+                // 版权筛选
+                const hasCopyright = publicCopyrightIds.includes(img.uuid);
+                if (selectedCopyrights.length === 1) {
+                    if (selectedCopyrights[0] === '是' && !hasCopyright) return false;
+                    if (selectedCopyrights[0] === '否' && hasCopyright) return false;
+                }
+
+                // 朝代筛选
+                if (img.dynasty && !selectedDynasties.includes(img.dynasty)) return false;
+
+                // 标签筛选
+                const lbls = img.labels || [];
+                if (selectedLabels.length > 0) {
+                    const hasLabel = lbls.some(l => selectedLabels.includes(l));
+                    if (!hasLabel) return false;
+                }
+
+                // 搜索筛选
+                if (keyword && !img.uuid.toLowerCase().includes(keyword)) return false;
+
+                return true;
+            });
+
+            renderGallery();
+        }
+
+        function resetAllFilters() {
+            document.querySelectorAll('.filter-option input').forEach(cb => cb.checked = true);
+            document.getElementById('searchInput').value = '';
+            applyFilters();
+        }
+
+        function renderGallery(append) {
+            const grid = document.getElementById('galleryGrid');
+            if (!append) {
+                currentPage = 1;
+                hasMoreData = true;
+            }
+            const displayData = filteredData.slice(0, currentPage * 200);
+
+            const html = displayData.map(img => `
+                <div class="painting-card" style="cursor:pointer" onclick="showDetail('${img.uuid}')">
+                    <div class="painting-image">
+                        <img src="api/thumb/${img.uuid}" alt="${img.uuid}" onerror="this.style.display='none'">
+                        ${img.num_detections > 0 ? `<span class="person-badge">${img.num_detections}个检测</span>` : ''}
+                    </div>
+                    <div class="painting-info">
+                        <div class="painting-title">${img.uuid.substring(0, 8)}...</div>
+                        <div class="painting-meta">${img.category} · ${img.dynasty || '未知朝代'}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            grid.innerHTML = html;
+            hasMoreData = displayData.length < filteredData.length;
+
+            const showing = displayData.length;
+            document.getElementById('resultCount').textContent = realTotalCount + '（已加载 ' + showing + ' 张）';
+        }
+
+        function loadMoreImages() {
+            if (isLoadingMore || !hasMoreData) return;
+            isLoadingMore = true;
+            currentPage++;
+            renderGallery(true);
+            isLoadingMore = false;
+        }
+
+        function showDetail(uuid) {
+            const img = filteredData.find(item => item.uuid === uuid);
+            if (!img) return;
+
+            currentImageData = img;
+            window._modalIndex = filteredData.findIndex(item => item.uuid === uuid);
+            document.getElementById('modalTitle').textContent = img.category;
+            document.getElementById('modalImage').src = 'api/thumb/' + img.uuid;
+            document.getElementById('detailModal').classList.add('show');
+            updateModalNavBtns();
+
+            fetch(`api/image/${img.uuid}`)
+                .then(res => res.json())
+                .then(data => {
+                    renderDetails(data);
+                    setTimeout(() => drawOverlay(data), 100);
+                });
+        }
+
+        function navigateModal(dir) {
+            const newIdx = (window._modalIndex || 0) + dir;
+            if (newIdx < 0 || newIdx >= filteredData.length) return;
+            window._modalIndex = newIdx;
+            showDetail(filteredData[newIdx].uuid);
+        }
+
+        function updateModalNavBtns() {
+            const idx = window._modalIndex || 0;
+            document.getElementById('modalPrevBtn').disabled = idx <= 0;
+            document.getElementById('modalNextBtn').disabled = idx >= filteredData.length - 1;
+            document.getElementById('modalPrevBtn').style.opacity = idx <= 0 ? 0.3 : 0.8;
+            document.getElementById('modalNextBtn').style.opacity = idx >= filteredData.length - 1 ? 0.3 : 0.8;
+        }
+
+        function renderDetails(data) {
+            const details = document.getElementById('modalInfo');
+            let html = `
+                <div class="modal-field"><label>UUID</label><span>${data.uuid}</span></div>
+                <div class="modal-field"><label>分类</label><span>${data.category || '未知'}</span></div>
+            `;
+
+            // CIT标签列表
+            if (data.cit && data.cit.labels && data.cit.labels.length > 0) {
+                window._selectedLabels = new Set(data.cit.labels);
+                html += `
+                    <div class="modal-field"><label style="display:flex;justify-content:space-between;align-items:center">CIT检测标签 <span style="font-size:11px;color:#8b4513;cursor:pointer;text-transform:none" onclick="toggleAllCITLabels()">全选/全不选</span></label>
+                        <div class="modal-labels">${data.cit.labels.map(l => `<label class="modal-label selectable cit-label" onclick="toggleLabel('${l}', this)"><input type="checkbox" checked> ${l}</label>`).join('')}</div>
+                    </div>
+                    <div class="modal-field"><label>CIT检测数</label><span>${data.cit.num_detections || 0}</span></div>
+                `;
+            } else if (data.detection) {
+                window._selectedLabels = new Set(data.detection.labels);
+                html += `
+                    <div class="modal-field"><label>检测标签</label>
+                        <div class="modal-labels">${data.detection.labels.map(l => `<label class="modal-label selectable cit-label" onclick="toggleLabel('${l}', this)"><input type="checkbox" checked> ${l}</label>`).join('')}</div>
+                    </div>
+                    <div class="modal-field"><label>检测人物数</label><span>${data.detection.num_detections || 0}</span></div>
+                `;
+            }
+
+            // DINO标签列表
+            if (data.dino && data.dino.labels && data.dino.labels.length > 0) {
+                window._selectedDinoLabels = new Set(data.dino.labels);
+                html += `
+                    <div class="modal-field"><label style="display:flex;justify-content:space-between;align-items:center">DINO检测标签 <span style="font-size:11px;color:#8b4513;cursor:pointer;text-transform:none" onclick="toggleAllDinoLabels()">全选/全不选</span></label>
+                        <div class="modal-labels">${data.dino.labels.map(l => `<label class="modal-label selectable dino-label" onclick="toggleLabel('${l}', this)"><input type="checkbox" checked> ${l}</label>`).join('')}</div>
+                    </div>
+                    <div class="modal-field"><label>DINO检测数</label><span>${data.dino.num_detections || 0}</span></div>
+                `;
+            }
+
+            // 标签样式初始化
+            setTimeout(() => {
+                document.querySelectorAll('.modal-label.selectable').forEach(el => {
+                    el.style.background = 'linear-gradient(135deg, #8b4513 0%, #a0522d 100%)';
+                    el.style.color = 'white';
+                    el.style.opacity = '1';
+                });
+            }, 50);
+
+            // 开关行：关键点 / CIT / DINO
+            const hasKeypoints = data.pose && data.pose.keypoints && data.pose.keypoints.length > 0;
+            const hasCIT = data.cit && data.cit.detections && data.cit.detections.length > 0;
+            const hasDINO = data.dino && data.dino.detections && data.dino.detections.length > 0;
+
+            if (hasKeypoints || hasCIT || hasDINO) {
+                html += `<div class="modal-toggles">`;
+                if (hasKeypoints) {
+                    html += `
+                        <label>
+                            <span class="toggle-switch">
+                                <input type="checkbox" id="modalShowKeypoints" checked onchange="drawOverlay()">
+                                <span class="toggle-slider"></span>
+                            </span>
+                            关键点
+                        </label>
+                    `;
+                }
+                if (hasCIT) {
+                    html += `
+                        <label>
+                            <span class="toggle-switch">
+                                <input type="checkbox" id="modalShowCIT" checked onchange="toggleCITModal()">
+                                <span class="toggle-slider"></span>
+                            </span>
+                            CIT检测框
+                        </label>
+                    `;
+                }
+                if (hasDINO) {
+                    html += `
+                        <label>
+                            <span class="toggle-switch">
+                                <input type="checkbox" id="modalShowDINO" checked onchange="toggleDOModal()">
+                                <span class="toggle-slider"></span>
+                            </span>
+                            DINO检测框
+                        </label>
+                    `;
+                }
+                html += `<button class="download-btn" onclick="exportAnnotations()" style="margin-left:auto;padding:4px 12px;font-size:12px">导出标注</button>`;
+                html += `</div>`;
+            }
+
+            // 关键点详情
+            if (data.pose) {
+                html += `
+                    <div class="modal-field"><label>关键点</label><span>${data.pose.total_keypoints}个</span></div>
+                    <div class="modal-field"><label>高置信度关键点</label><span>${data.pose.keypoints.length}个</span></div>
+                    <div class="keypoint-legend">
+                        <h4>关键点图例:</h4>
+                        ${Object.entries(BODY_PARTS).map(([key, part]) => `
+                            <div class="legend-item">
+                                <span class="color-dot" style="background: ${part.color}"></span>
+                                <span class="part-name">${part.label}</span>
+                                <span class="part-range">(${part.range[0]}-${part.range[1]})</span>
+                                <label class="toggle-switch" style="margin-left: 8px;">
+                                    <input type="checkbox" class="part-toggle" data-part="${key}" checked onchange="drawOverlay()">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            details.innerHTML = html;
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('show');
+            currentImageData = null;
+            window._currentModalData = null;
+        }
+
+        function drawOverlay(data) {
+            if (data) window._currentModalData = data;
+            data = window._currentModalData;
+            if (!data) return;
+
+            const canvas = document.getElementById('overlayCanvas');
+            const img = document.getElementById('modalImage');
+            const ctx = canvas.getContext('2d');
+
+            function doDraw() {
+                // 用getBoundingClientRect获取图片实际渲染位置
+                const containerRect = img.parentElement.getBoundingClientRect();
+                const imgRect = img.getBoundingClientRect();
+
+                // 图片相对于容器的位置和大小
+                const offsetX = imgRect.left - containerRect.left;
+                const offsetY = imgRect.top - containerRect.top;
+                const drawW = imgRect.width;
+                const drawH = imgRect.height;
+
+                canvas.width = containerRect.width;
+                canvas.height = containerRect.height;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const showKeypoints = document.getElementById('modalShowKeypoints')?.checked;
+                const showCIT = document.getElementById('modalShowCIT')?.checked;
+                const showDINO = document.getElementById('modalShowDINO')?.checked;
+
+                if (showKeypoints && data.pose && data.pose.keypoints.length > 0) {
+                    drawKeypoints(ctx, data.pose.keypoints, drawW, drawH, offsetX, offsetY, data);
+                }
+                if (showCIT && data.cit && data.cit.detections) {
+                    drawCITBboxes(ctx, data.cit.detections, drawW, drawH, offsetX, offsetY, data);
+                }
+                if (showDINO && data.dino && data.dino.detections) {
+                    drawDinoBboxes(ctx, data.dino.detections, drawW, drawH, offsetX, offsetY, data);
+                }
+            }
+
+            if (img.complete && img.naturalWidth > 0) {
+                doDraw();
+            } else {
+                img.onload = doDraw;
+            }
+        }
+
+        function drawKeypoints(ctx, keypoints, drawW, drawH, offsetX, offsetY, data) {
+            const imgSize = data.pose.image_size || [1000, 1000];
+            const origW = imgSize[0];
+            const origH = imgSize[1];
+            const scale = Math.min(drawW / origW, drawH / origH);
+
+            const partKeys = Object.keys(BODY_PARTS);
+
+            keypoints.forEach((kp, idx) => {
+                let partIdx = -1;
+                for (let i = 0; i < partKeys.length; i++) {
+                    const part = BODY_PARTS[partKeys[i]];
+                    if (idx >= part.range[0] && idx <= part.range[1]) {
+                        partIdx = i;
+                        break;
+                    }
+                }
+
+                const toggle = document.querySelector(`.part-toggle[data-part="${partKeys[partIdx]}"]`);
+                if (toggle && !toggle.checked) return;
+
+                let color = '#888';
+                if (partIdx >= 0) color = Object.values(BODY_PARTS)[partIdx].color;
+
+                ctx.beginPath();
+                ctx.arc(offsetX + kp.x * scale, offsetY + kp.y * scale, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+        }
+
+        function toggleLabel(label, el) {
+            const cb = el.querySelector('input');
+            cb.checked = !cb.checked;
+            const isDino = el.classList.contains('dino-label');
+            const selectedSet = isDino ? window._selectedDinoLabels : window._selectedLabels;
+            if (cb.checked) {
+                selectedSet.add(label);
+                el.style.background = 'linear-gradient(135deg, #8b4513 0%, #a0522d 100%)';
+                el.style.color = 'white';
+                el.style.opacity = '1';
+            } else {
+                selectedSet.delete(label);
+                el.style.background = '#ddd';
+                el.style.color = '#999';
+                el.style.opacity = '0.5';
+            }
+            if (window._currentModalData) drawOverlay(window._currentModalData);
+        }
+
+        function toggleCITModal() {
+            const showCIT = document.getElementById('modalShowCIT').checked;
+            const labels = document.querySelectorAll('.modal-label.selectable.cit-label');
+            labels.forEach(tag => {
+                const label = tag.textContent.trim();
+                if (showCIT) {
+                    tag.style.background = 'linear-gradient(135deg, #8b4513 0%, #a0522d 100%)';
+                    tag.style.color = 'white';
+                    tag.style.opacity = '1';
+                    tag.querySelector('input').checked = true;
+                    window._selectedLabels.add(label);
+                } else {
+                    tag.style.background = '#ddd';
+                    tag.style.color = '#999';
+                    tag.style.opacity = '0.5';
+                    tag.querySelector('input').checked = false;
+                    window._selectedLabels.delete(label);
+                }
+            });
+            if (window._currentModalData) drawOverlay(window._currentModalData);
+        }
+
+        function toggleDOModal() {
+            const showDINO = document.getElementById('modalShowDINO').checked;
+            const labels = document.querySelectorAll('.modal-label.selectable.dino-label');
+            labels.forEach(tag => {
+                const label = tag.textContent.trim();
+                if (showDINO) {
+                    tag.style.background = 'linear-gradient(135deg, #8b4513 0%, #a0522d 100%)';
+                    tag.style.color = 'white';
+                    tag.style.opacity = '1';
+                    tag.querySelector('input').checked = true;
+                    window._selectedDinoLabels.add(label);
+                } else {
+                    tag.style.background = '#ddd';
+                    tag.style.color = '#999';
+                    tag.style.opacity = '0.5';
+                    tag.querySelector('input').checked = false;
+                    window._selectedDinoLabels.delete(label);
+                }
+            });
+            if (window._currentModalData) drawOverlay(window._currentModalData);
+        }
+
+        function toggleAllCITLabels() {
+            const labels = document.querySelectorAll('.modal-label.selectable.cit-label');
+            const allSelected = labels.length > 0 && Array.from(labels).every(t => t.querySelector('input').checked);
+            labels.forEach(tag => {
+                const label = tag.textContent.trim();
+                if (allSelected) {
+                    tag.style.background = '#ddd';
+                    tag.style.color = '#999';
+                    tag.style.opacity = '0.5';
+                    tag.querySelector('input').checked = false;
+                    window._selectedLabels.delete(label);
+                } else {
+                    tag.style.background = 'linear-gradient(135deg, #8b4513 0%, #a0522d 100%)';
+                    tag.style.color = 'white';
+                    tag.style.opacity = '1';
+                    tag.querySelector('input').checked = true;
+                    window._selectedLabels.add(label);
+                }
+            });
+            if (window._currentModalData) drawOverlay(window._currentModalData);
+        }
+
+        function toggleAllDinoLabels() {
+            const labels = document.querySelectorAll('.modal-label.selectable.dino-label');
+            const allSelected = labels.length > 0 && Array.from(labels).every(t => t.querySelector('input').checked);
+            labels.forEach(tag => {
+                const label = tag.textContent.trim();
+                if (allSelected) {
+                    tag.style.background = '#ddd';
+                    tag.style.color = '#999';
+                    tag.style.opacity = '0.5';
+                    tag.querySelector('input').checked = false;
+                    window._selectedDinoLabels.delete(label);
+                } else {
+                    tag.style.background = 'linear-gradient(135deg, #8b4513 0%, #a0522d 100%)';
+                    tag.style.color = 'white';
+                    tag.style.opacity = '1';
+                    tag.querySelector('input').checked = true;
+                    window._selectedDinoLabels.add(label);
+                }
+            });
+            if (window._currentModalData) drawOverlay(window._currentModalData);
+        }
+
+        function exportAnnotations() {
+            const data = window._currentModalData;
+            if (!data) return;
+
+            const result = {
+                uuid: data.uuid,
+                image_size: data.cit?.image_size || data.dino?.image_size || data.pose?.image_size || null,
+                category: data.category || '',
+                detection: null,
+                cit: null,
+                dino: null,
+                pose: null
+            };
+
+            // detection (merged) - 全部导出
+            if (data.detection) {
+                result.detection = {
+                    labels: data.detection.labels || [],
+                    detections: data.detection.detections || [],
+                    num_detections: data.detection.num_detections || 0
+                };
+            }
+
+            // 只导出选中的CIT标签对应的框
+            if (data.cit && data.cit.detections) {
+                const filtered = data.cit.detections.filter(d => window._selectedLabels?.has(d.label));
+                result.cit = {
+                    image_size: data.cit.image_size,
+                    detections: filtered,
+                    labels: [...new Set(filtered.map(d => d.label))],
+                    count: filtered.length
+                };
+            }
+
+            // 只导出选中的DINO标签对应的框
+            if (data.dino && data.dino.detections) {
+                const filtered = data.dino.detections.filter(d => window._selectedDinoLabels?.has(d.label));
+                result.dino = {
+                    image_size: data.dino.image_size,
+                    detections: filtered,
+                    labels: [...new Set(filtered.map(d => d.label))],
+                    count: filtered.length
+                };
+            }
+
+            // pose 关键点 - 全部导出（原始数据）
+            if (data.pose) {
+                result.pose = {
+                    keypoints: data.pose.keypoints || [],
+                    total_keypoints: data.pose.total_keypoints || 0,
+                    image_size: data.pose.image_size || []
+                };
+            }
+
+            // 下载JSON
+            const shortId = data.uuid.substring(0, 8);
+            const jsonBlob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
+            const jsonUrl = URL.createObjectURL(jsonBlob);
+            const a1 = document.createElement('a');
+            a1.href = jsonUrl;
+            a1.download = `${shortId}_annotations.json`;
+            a1.click();
+            URL.revokeObjectURL(jsonUrl);
+
+            // 下载图片
+            fetch(`api/thumb/${data.uuid}`)
+                .then(res => res.blob())
+                .then(imgBlob => {
+                    const imgUrl = URL.createObjectURL(imgBlob);
+                    const a2 = document.createElement('a');
+                    a2.href = imgUrl;
+                    a2.download = `${shortId}.jpg`;
+                    a2.click();
+                    URL.revokeObjectURL(imgUrl);
+                })
+                .catch(err => console.error('图片下载失败:', err));
+        }
+
+        function drawBboxes(ctx, detections, canvasW, canvasH, data) {
+            const imgSize = data.pose?.image_size || [1000, 1000];
+            const origW = imgSize[0];
+            const origH = imgSize[1];
+            const scale = Math.min(canvasW / origW, canvasH / origH);
+            const drawW = origW * scale;
+            const drawH = origH * scale;
+            const offsetX = (canvasW - drawW) / 2;
+            const offsetY = (canvasH - drawH) / 2;
+
+            const LABEL_COLORS = {
+                'person': '#FF6B6B', 'deity': '#4ECDC4', 'building': '#45B7D1',
+                'mountain': '#96CEB4', 'tree': '#88D8B0', 'buddha': '#FFEAA7',
+                'calligraphy': '#DDA0DD', 'boat': '#98D8C8', 'animal': '#F7DC6F',
+                'cloud': '#AED6F1', 'object': '#F0B27A', 'water': '#85C1E9'
+            };
+
+            detections.forEach(det => {
+                if (window._selectedLabels && !window._selectedLabels.has(det.label)) return;
+                const [x1, y1, x2, y2] = det.bbox;
+                const color = LABEL_COLORS[det.label] || '#888';
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(
+                    offsetX + x1 * scale,
+                    offsetY + y1 * scale,
+                    (x2 - x1) * scale,
+                    (y2 - y1) * scale
+                );
+
+                ctx.fillStyle = color;
+                ctx.font = '12px Arial';
+                ctx.fillText(
+                    `${det.label} ${(det.confidence * 100).toFixed(0)}%`,
+                    offsetX + x1 * scale,
+                    offsetY + y1 * scale - 5
+                );
+            });
+        }
+
+        // CIT类别颜色
+        const CIT_COLORS = {
+            'person': '#FF6B6B', 'buddha_deity': '#9B59B6', 'landscape': '#8E44AD',
+            'water': '#3498DB', 'plants': '#27AE60', 'architecture': '#F39C12',
+            'animals': '#E74C3C', 'atmosphere': '#95A5A6', 'transport': '#1ABC9C',
+            'objects': '#E67E22', 'calligraphy': '#34495E'
+        };
+
+        function drawCITBboxes(ctx, detections, drawW, drawH, offsetX, offsetY, data) {
+            // DINO-X bbox是原图像素坐标，需要用原图尺寸做缩放
+            const imgSize = data.cit?.image_size || data.pose?.image_size || [1000, 1000];
+            const origW = imgSize[0];
+            const origH = imgSize[1];
+            const scale = Math.min(drawW / origW, drawH / origH);
+
+            detections.forEach(det => {
+                // 标签过滤：只显示选中的标签
+                if (window._selectedLabels && !window._selectedLabels.has(det.label)) return;
+                const [x1, y1, x2, y2] = det.bbox;
+                const mainCat = det.label.split('.')[0];
+                const color = CIT_COLORS[mainCat] || '#888';
+
+                // bbox就是原图像素坐标，直接缩放到canvas
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(
+                    offsetX + x1 * scale,
+                    offsetY + y1 * scale,
+                    (x2 - x1) * scale,
+                    (y2 - y1) * scale
+                );
+
+                // 标签背景
+                const label = `${det.label} ${(det.confidence * 100).toFixed(0)}%`;
+                ctx.font = '12px Arial';
+                const textW = ctx.measureText(label).width;
+                const lx = offsetX + x1 * scale;
+                const ly = offsetY + y1 * scale - 18;
+                ctx.fillStyle = color;
+                ctx.fillRect(lx, ly, textW + 6, 18);
+                ctx.fillStyle = '#fff';
+                ctx.fillText(label, lx + 3, ly + 13);
+            });
+        }
+
+        // DINO-X原始类别颜色（按类别前缀分组着色）
+        const DINO_COLORS = {
+            'person': '#FF6B6B', 'man': '#E74C3C', 'woman': '#FF6B6B',
+            'child': '#FFB347', 'boy': '#FFB347', 'girl': '#FFB347',
+            'face': '#FF8A80', 'hair': '#D4A5A5',
+            'tree': '#27AE60', 'flower': '#E91E63', 'plant': '#27AE60', 'grass': '#8BC34A',
+            'building': '#F39C12', 'house': '#F39C12', 'temple': '#E67E22', 'bridge': '#8D6E63',
+            'mountain': '#795548', 'rock': '#9E9E9E', 'water': '#3498DB', 'river': '#3498DB',
+            'boat': '#1ABC9C', 'ship': '#1ABC9C',
+            'cloud': '#90CAF9', 'sky': '#81D4FA', 'sun': '#FFC107', 'moon': '#B0BEC5',
+            'animal': '#FF9800', 'bird': '#FF5722', 'horse': '#8D6E63',
+            'calligraphy': '#34495E', 'painting': '#34495E', 'scroll': '#34495E',
+            'object': '#E67E22', 'book': '#795548', 'vase': '#9C27B0',
+            'clothing': '#F48FB1', 'robe': '#F48FB1', 'dress': '#F48FB1',
+            'hat': '#795548', 'shoe': '#795548', 'footwear': '#795548',
+            'hand': '#FFAB91', 'arm': '#FFAB91', 'foot': '#FFAB91', 'leg': '#FFAB91',
+            'eye': '#80DEEA', 'mouth': '#EF9A9A'
+        };
+
+        function drawDinoBboxes(ctx, detections, drawW, drawH, offsetX, offsetY, data) {
+            const imgSize = data.dino?.image_size || data.pose?.image_size || [1000, 1000];
+            const origW = imgSize[0];
+            const origH = imgSize[1];
+            const scale = Math.min(drawW / origW, drawH / origH);
+
+            detections.forEach(det => {
+                // 只显示选中的DINO标签
+                if (window._selectedDinoLabels && !window._selectedDinoLabels.has(det.label)) return;
+                const [x1, y1, x2, y2] = det.bbox;
+                const color = DINO_COLORS[det.label] || '#888';
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(
+                    offsetX + x1 * scale,
+                    offsetY + y1 * scale,
+                    (x2 - x1) * scale,
+                    (y2 - y1) * scale
+                );
+
+                // 标签背景
+                const label = `${det.label} ${(det.confidence * 100).toFixed(0)}%`;
+                ctx.font = '10px Arial';
+                const textW = ctx.measureText(label).width;
+                const lx = offsetX + x1 * scale;
+                const ly = offsetY + y1 * scale - 14;
+                ctx.fillStyle = color;
+                ctx.fillRect(lx, ly, textW + 4, 14);
+                ctx.fillStyle = '#fff';
+                ctx.fillText(label, lx + 2, ly + 10);
+            });
+        }
+
+        // 搜索
+        document.getElementById('searchInput').addEventListener('input', function() {
+            applyFilters();
+        });
+
+        // 滚动加载更多
+        window.addEventListener('scroll', function() {
+            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+                loadMoreImages();
+            }
+        });
+
+        // 初始化：展开第一个筛选区域
+        document.addEventListener('DOMContentLoaded', function() {
+            const firstTitle = document.querySelector('.filter-title');
+            if (firstTitle) {
+                firstTitle.click();
+            }
+            loadFilterOptions();
+        });
+
+        // 下载筛选结果
+        function downloadFiltered() {
+            // 获取当前选中的筛选条件
+            const categories = [];
+            document.querySelectorAll('[data-filter="category"]:checked').forEach(cb => {
+                categories.push(cb.value);
+            });
+
+            const dynasties = [];
+            document.querySelectorAll('[data-filter="dynasty"]:checked').forEach(cb => {
+                dynasties.push(cb.value);
+            });
+
+            const labels = [];
+            document.querySelectorAll('[data-filter="label"]:checked').forEach(cb => {
+                labels.push(cb.value);
+            });
+
+            let url = 'api/download?';
+            if (categories.length > 0) url += `category=${encodeURIComponent(categories.join(','))}&`;
+            if (dynasties.length > 0) url += `dynasty=${encodeURIComponent(dynasties.join(','))}&`;
+            if (labels.length > 0) url += `cit_label=${encodeURIComponent(labels.join(','))}&`;
+
+            window.location.href = url;
+        }
+    </script>
+</body>
+</html>

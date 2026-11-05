@@ -1,0 +1,15 @@
+# 测试产物
+test-output/
+pytest_run.log
+sut_run.log
+sut_run.err
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# 运行时缓存（SUT 拼接的长卷图）
+sut/data/scroll_cache/

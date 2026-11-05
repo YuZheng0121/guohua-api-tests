@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>明清仕女图典藏 - 中国绘画分析系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: #f5f5f0;
+        }
+
+        /* 顶部导航 */
+        .header {
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+            color: white;
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid #d2691e;
+        }
+        .header h1 { font-size: 32px; font-weight: 600; margin-bottom: 8px; }
+        .header .subtitle { font-size: 16px; opacity: 0.9; }
+
+        /* 导航栏 */
+        .nav {
+            background: #fff;
+            padding: 14px 40px;
+            display: flex;
+            justify-content: space-evenly;
+            border-bottom: 1px solid #ddd;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .nav a {
+            color: #333;
+            text-decoration: none;
+            font-size: 18px;
+            padding: 8px 0;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .nav a:hover, .nav a.active {
+            color: #8b4513;
+            border-bottom-color: #8b4513;
+        }
+
+        /* 主体 */
+        .container { width: 100%; margin: 0 auto; padding: 20px; }
+
+        /* 统计卡片 */
+        .stats-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 25px 40px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-evenly;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .stat-item { text-align: center; }
+        .stat-number { font-size: 36px; font-weight: bold; color: #8b4513; }
+        .stat-label { font-size: 14px; color: #666; margin-top: 6px; }
+
+        /* 工具栏 */
+        .toolbar {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 25px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .result-count { color: #666; font-size: 13px; }
+        .search-box {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 250px;
+        }
+
+        /* 图片网格 */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .painting-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        .painting-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        .painting-image {
+            width: 100%;
+            height: 240px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 64px;
+            position: relative;
+        }
+        .painting-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .person-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(139, 69, 19, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        .painting-info { padding: 12px; }
+        .painting-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 6px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .painting-meta { font-size: 12px; color: #666; line-height: 1.6; }
+        .painting-dynasty {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #f5e6d3;
+            color: #8b4513;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-top: 6px;
+        }
+        .copyright-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #d4edda;
+            color: #155724;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-top: 6px;
+            margin-left: 5px;
+        }
+
+        /* 主体布局 */
+        .main-layout {
+            display: flex;
+            gap: 20px;
+        }
+
+        /* 左侧筛选栏 */
+        .filter-sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .filter-header {
+            padding: 15px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .filter-header span {
+            font-size: 14px;
+            color: #333;
+            font-weight: bold;
+        }
+        .filter-header a {
+            font-size: 12px;
+            color: #8b4513;
+            text-decoration: none;
+        }
+        .filter-header a:hover {
+            text-decoration: underline;
+        }
+        .filter-section {
+            border-bottom: 1px solid #eee;
+        }
+        .filter-title {
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .filter-title:hover {
+            background: #f9f9f9;
+        }
+        .filter-title span:first-child {
+            font-size: 14px;
+            color: #333;
+        }
+        .filter-count {
+            margin-left: 5px;
+            font-size: 12px;
+            color: #999;
+        }
+        .arrow {
+            margin-left: auto;
+            font-size: 14px;
+            color: #999;
+            transition: transform 0.3s;
+        }
+        .filter-title.expanded .arrow {
+            transform: rotate(90deg);
+        }
+        .filter-options {
+            display: none;
+            padding: 0 15px 15px;
+        }
+        .filter-options.show {
+            display: block;
+        }
+        .filter-option {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 13px;
+            color: #555;
+            cursor: pointer;
+        }
+        .filter-option:hover {
+            color: #8b4513;
+        }
+        .filter-option input {
+            margin-right: 8px;
+        }
+        .filter-option .count {
+            margin-left: auto;
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* 右侧内容区 */
+        .content-area {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* 图表 */
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .chart-card h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* 详情弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 95vw;
+            max-width: 1400px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        .modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .modal-title {
+            font-size: 24px;
+            color: #333;
+            margin: 0;
+            font-weight: 600;
+        }
+        .modal-close {
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .modal-close:hover { color: #333; background: #f0f0f0; }
+        .modal-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .modal-image {
+            flex: 1;
+            position: relative;
+            min-width: 0;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .modal-canvas-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .modal-canvas-wrapper canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .modal-info {
+            width: 350px;
+            flex-shrink: 0;
+            overflow-y: auto;
+            padding: 25px;
+            border-left: 1px solid #eee;
+            background: #fafafa;
+        }
+        .modal-field {
+            padding: 14px 16px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            border: 1px solid #eee;
+        }
+        .modal-field label { font-size: 12px; color: #888; display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .modal-field span { font-size: 15px; color: #333; font-weight: 500; }
+        .modal-labels { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .modal-label {
+            padding: 5px 12px;
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        .modal-toggles {
+            display: flex;
+            gap: 20px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, #fdf6ee 0%, #f5e6d3 100%);
+            border-radius: 10px;
+            margin-bottom: 14px;
+            border: 1px solid #e8d4bc;
+        }
+        .modal-toggles label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #ccc;
+            border-radius: 20px;
+            transition: 0.3s;
+        }
+        .toggle-slider:before {
+            content: "";
+            position: absolute;
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: #8b4513; }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(16px); }
+        .keypoint-legend {
+            padding: 14px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+        .keypoint-legend h4 {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 13px;
+            color: #444;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .legend-item:last-child {
+            border-bottom: none;
+        }
+        .legend-item .color-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 10px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .legend-item .part-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        .legend-item .part-range {
+            color: #999;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>明清仕女图典藏</h1>
+            <div class="subtitle">52幅明清仕女图 · 多模型AI检测结果</div>
+        </div>
+        <div>
+            <a href="." style="color: white; text-decoration: none; font-size: 14px;">← 返回主系统</a>
+        </div>
+    </div>
+
+    <div class="nav">
+        <a href=".">统计概览</a>
+        <a href="images">图片查看</a>
+        <a href="shinu" class="active">明清仕女图</a>
+        <a href="human">人工标注</a>
+    </div>
+
+    <div class="container">
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-number">52</div>
+                <div class="stat-label">总作品数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">448</div>
+                <div class="stat-label">检测人物数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">人物识别率</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">15</div>
+                <div class="stat-label">作者数量</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">10</div>
+                <div class="stat-label">公开版权</div>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <!-- 左侧筛选栏 -->
+            <div class="filter-sidebar">
+                <div class="filter-header">
+                    <span>查询条件</span>
+                    <a href="#" onclick="resetAllFilters(); return false;">重新查询</a>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-title" onclick="toggleSection(this)">
+                        <span>时代</span>
+                        <span class="filter-count">(2)</span>
+                        <span class="arrow">›</span>
+                    </div>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="dynasty" value="明代"> 明代
+                            <span class="count">(19)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="dynasty" value="清代"> 清代
+                            <span class="count">(33)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-title" onclick="toggleSection(this)">
+                        <span>版权状态</span>
+                        <span class="filter-count">(2)</span>
+                        <span class="arrow">›</span>
+                    </div>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="copyright" value="是"> 有公开版权
+                            <span class="count">(10)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="copyright" value="否"> 无公开版权
+                            <span class="count">(42)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-title" onclick="toggleSection(this)">
+                        <span>作者</span>
+                        <span class="filter-count">(5)</span>
+                        <span class="arrow">›</span>
+                    </div>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="author" value="吴嘉猷"> 吴嘉猷
+                            <span class="count">(12)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="author" value="杜堇"> 杜堇
+                            <span class="count">(10)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="author" value="佚名"> 佚名
+                            <span class="count">(7)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="author" value="李廷薰"> 李廷薰
+                            <span class="count">(4)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="author" value="其他"> 其他
+                            <span class="count">(19)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-title" onclick="toggleSection(this)">
+                        <span>收藏机构</span>
+                        <span class="filter-count">(4)</span>
+                        <span class="arrow">›</span>
+                    </div>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="institution" value="上海博物馆"> 上海博物馆
+                            <span class="count">(25)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="institution" value="大英博物馆"> 大英博物馆
+                            <span class="count">(6)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="institution" value="故宫博物院"> 故宫博物院
+                            <span class="count">(4)</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" checked onchange="applyFilters()" data-filter="institution" value="其他"> 其他
+                            <span class="count">(17)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧内容区 -->
+            <div class="content-area">
+                <div class="toolbar">
+                    <div class="result-count">共 <strong id="resultCount">52</strong> 笔</div>
+                    <input type="text" class="search-box" placeholder="搜索作品名称、作者..." id="searchInput">
+                </div>
+
+                <div class="gallery-grid" id="galleryGrid">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-section">
+            <div class="chart-card">
+                <h3>时代分布</h3>
+                <canvas id="dynastyChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>作者作品量 (TOP5)</h3>
+                <canvas id="authorChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">作品名称</h2>
+                <span class="modal-close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="modal-image">
+                    <img id="modalImage" src="" alt="">
+                    <div class="modal-canvas-wrapper">
+                        <canvas id="overlayCanvas"></canvas>
+                    </div>
+                </div>
+                <div class="modal-info" id="modalInfo">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let paintingsData = [];
+        let filteredData = [];
+        let currentPainting = null;
+
+        const BODY_PARTS = {
+            head: { color: '#FF6B6B', range: [0, 27], label: '头部' },
+            torso: { color: '#4A90D9', range: [28, 67], label: '躯干' },
+            left_arm: { color: '#7BC67E', range: [68, 107], label: '左臂' },
+            right_arm: { color: '#FFB347', range: [108, 147], label: '右臂' },
+            left_leg: { color: '#9B59B6', range: [148, 227], label: '左腿' },
+            right_leg: { color: '#8B4513', range: [228, 307], label: '右腿' }
+        };
+
+        // 加载数据
+        fetch('api/shinu52')
+            .then(res => res.json())
+            .then(data => {
+                paintingsData = data;
+                filteredData = [...data];
+                renderGallery();
+                renderCharts();
+            });
+
+        function renderGallery() {
+            const grid = document.getElementById('galleryGrid');
+            grid.innerHTML = filteredData.map(p => `
+                <div class="painting-card" onclick="showDetail('${p.id}')">
+                    <div class="painting-image">
+                        <img src="${p.thumbnail_url}" alt="${p.title}" onerror="this.style.display='none'; this.parentElement.innerHTML=' ';">
+                        ${p.num_persons > 0 ? `<span class="person-badge">${p.num_persons}个人物</span>` : ''}
+                    </div>
+                    <div class="painting-info">
+                        <div class="painting-title">${p.title}</div>
+                        <div class="painting-meta">${p.author} · ${p.institution}</div>
+                        <span class="painting-dynasty">${p.dynasty}</span>
+                        ${p.copyright === '是' ? '<span class="copyright-badge">公开版权</span>' : ''}
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('resultCount').textContent = filteredData.length;
+        }
+
+        // 切换筛选区域展开/收起
+        function toggleSection(el) {
+            el.classList.toggle('expanded');
+            const options = el.nextElementSibling;
+            options.classList.toggle('show');
+        }
+
+        // 应用所有筛选条件
+        function applyFilters() {
+            filteredData = paintingsData.filter(p => {
+                // 朝代筛选
+                const dynastyCheckboxes = document.querySelectorAll('[data-filter="dynasty"]:checked');
+                if (dynastyCheckboxes.length > 0) {
+                    const selectedDynasties = Array.from(dynastyCheckboxes).map(cb => cb.value);
+                    if (!selectedDynasties.includes(p.dynasty)) {
+                        return false;
+                    }
+                }
+
+                // 版权筛选
+                const copyrightCheckboxes = document.querySelectorAll('[data-filter="copyright"]:checked');
+                if (copyrightCheckboxes.length > 0) {
+                    const selectedCopyright = Array.from(copyrightCheckboxes).map(cb => cb.value);
+                    if (!selectedCopyright.includes(p.copyright)) {
+                        return false;
+                    }
+                }
+
+                // 作者筛选
+                const authorCheckboxes = document.querySelectorAll('[data-filter="author"]:checked');
+                if (authorCheckboxes.length > 0) {
+                    const selectedAuthors = Array.from(authorCheckboxes).map(cb => cb.value);
+                    if (!selectedAuthors.includes(p.author) && !selectedAuthors.includes('其他')) {
+                        return false;
+                    }
+                }
+
+                // 机构筛选
+                const institutionCheckboxes = document.querySelectorAll('[data-filter="institution"]:checked');
+                if (institutionCheckboxes.length > 0) {
+                    const selectedInstitutions = Array.from(institutionCheckboxes).map(cb => cb.value);
+                    const inst = p.institution || '未知';
+                    if (!selectedInstitutions.includes(inst) && !selectedInstitutions.includes('其他')) {
+                        return false;
+                    }
+                }
+
+                // 搜索筛选
+                const keyword = document.getElementById('searchInput').value.toLowerCase();
+                if (keyword && !p.title.toLowerCase().includes(keyword) && !p.author.toLowerCase().includes(keyword)) {
+                    return false;
+                }
+
+                return true;
+            });
+            renderGallery();
+        }
+
+        // 重置所有筛选
+        function resetAllFilters() {
+            document.querySelectorAll('.filter-option input').forEach(cb => {
+                cb.checked = true;
+            });
+            document.getElementById('searchInput').value = '';
+            applyFilters();
+        }
+
+        function renderCharts() {
+            // 朝代
+            const dynastyCount = {};
+            paintingsData.forEach(p => {
+                dynastyCount[p.dynasty] = (dynastyCount[p.dynasty] || 0) + 1;
+            });
+            new Chart(document.getElementById('dynastyChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(dynastyCount),
+                    datasets: [{
+                        data: Object.values(dynastyCount),
+                        backgroundColor: ['#8b4513', '#d2691e']
+                    }]
+                }
+            });
+
+            // 作者
+            const authorCount = {};
+            paintingsData.forEach(p => {
+                authorCount[p.author] = (authorCount[p.author] || 0) + 1;
+            });
+            const topAuthors = Object.entries(authorCount)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            new Chart(document.getElementById('authorChart'), {
+                type: 'bar',
+                data: {
+                    labels: topAuthors.map(a => a[0]),
+                    datasets: [{
+                        data: topAuthors.map(a => a[1]),
+                        backgroundColor: '#8b4513'
+                    }]
+                },
+                options: { indexAxis: 'y' }
+            });
+        }
+
+        function showDetail(id) {
+            const p = paintingsData.find(item => item.id === id);
+            if (p) {
+                currentPainting = p;
+                document.getElementById('modalTitle').textContent = p.title;
+                document.getElementById('modalImage').src = p.thumbnail_url;
+
+                // 构建信息面板
+                let infoHtml = `
+                    <div class="modal-field"><label>作者</label><span>${p.author}</span></div>
+                    <div class="modal-field"><label>时代</label><span>${p.dynasty}</span></div>
+                    <div class="modal-field"><label>收藏机构</label><span>${p.institution || '未知'}</span></div>
+                    <div class="modal-field"><label>检测人物数</label><span>${p.num_persons}</span></div>
+                    <div class="modal-field"><label>检测标签</label>
+                        <div class="modal-labels">${p.labels.map(l => `<span class="modal-label">${l}</span>`).join('')}</div>
+                    </div>
+                `;
+
+                // 关键点信息
+                if (p.keypoints && p.keypoints.length > 0) {
+                    infoHtml += `
+                        <div class="modal-toggles">
+                            <label>
+                                <span class="toggle-switch">
+                                    <input type="checkbox" id="modalShowKeypoints" checked onchange="drawOverlay()">
+                                    <span class="toggle-slider"></span>
+                                </span>
+                                关键点
+                            </label>
+                            <label>
+                                <span class="toggle-switch">
+                                    <input type="checkbox" id="modalShowDetections" checked onchange="drawOverlay()">
+                                    <span class="toggle-slider"></span>
+                                </span>
+                                检测结果
+                            </label>
+                        </div>
+                        <div class="modal-field"><label>关键点</label><span>${p.keypoints.length}个</span></div>
+                        <div class="keypoint-legend">
+                            <h4>关键点图例:</h4>
+                            ${Object.entries(BODY_PARTS).map(([key, part]) => `
+                                <div class="legend-item">
+                                    <span class="color-dot" style="background: ${part.color}"></span>
+                                    <span class="part-name">${part.label}</span>
+                                    <span class="part-range">(${part.range[0]}-${part.range[1]})</span>
+                                    <label class="toggle-switch" style="margin-left: 8px;">
+                                        <input type="checkbox" class="part-toggle" data-part="${key}" checked onchange="drawOverlay()">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                document.getElementById('modalInfo').innerHTML = infoHtml;
+                document.getElementById('detailModal').classList.add('show');
+
+                // 绘制覆盖层
+                setTimeout(() => drawOverlay(), 100);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('show');
+            currentPainting = null;
+        }
+
+        function drawOverlay() {
+            const canvas = document.getElementById('overlayCanvas');
+            const img = document.getElementById('modalImage');
+            const ctx = canvas.getContext('2d');
+
+            if (!currentPainting || !currentPainting.keypoints) return;
+
+            function doDraw() {
+                const w = img.clientWidth;
+                const h = img.clientHeight;
+                canvas.width = w;
+                canvas.height = h;
+                ctx.clearRect(0, 0, w, h);
+
+                const showKeypoints = document.getElementById('modalShowKeypoints')?.checked;
+                const showDetections = document.getElementById('modalShowDetections')?.checked;
+
+                if (showKeypoints && currentPainting.keypoints) {
+                    drawKeypoints(ctx, currentPainting.keypoints, w, h);
+                }
+            }
+
+            if (img.complete && img.naturalWidth > 0) {
+                doDraw();
+            } else {
+                img.onload = doDraw;
+            }
+        }
+
+        function drawKeypoints(ctx, keypoints, canvasW, canvasH) {
+            // 使用实际的图片尺寸
+            const imgSize = currentPainting?.image_size || [1000, 1000];
+            const origW = imgSize[0];
+            const origH = imgSize[1];
+            const scale = Math.min(canvasW / origW, canvasH / origH);
+            const drawW = origW * scale;
+            const drawH = origH * scale;
+            const offsetX = (canvasW - drawW) / 2;
+            const offsetY = (canvasH - drawH) / 2;
+
+            const partKeys = Object.keys(BODY_PARTS);
+
+            keypoints.forEach((kp, idx) => {
+                let partIdx = -1;
+                for (let i = 0; i < partKeys.length; i++) {
+                    const part = BODY_PARTS[partKeys[i]];
+                    if (idx >= part.range[0] && idx <= part.range[1]) {
+                        partIdx = i;
+                        break;
+                    }
+                }
+
+                const toggle = document.querySelector(`.part-toggle[data-part="${partKeys[partIdx]}"]`);
+                if (toggle && !toggle.checked) return;
+
+                let color = '#888';
+                if (partIdx >= 0) color = Object.values(BODY_PARTS)[partIdx].color;
+
+                ctx.beginPath();
+                ctx.arc(offsetX + kp.x * scale, offsetY + kp.y * scale, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+        }
+
+        // 搜索
+        document.getElementById('searchInput').addEventListener('input', function() {
+            applyFilters();
+        });
+
+        // 初始化：展开第一个筛选区域
+        document.addEventListener('DOMContentLoaded', function() {
+            const firstTitle = document.querySelector('.filter-title');
+            if (firstTitle) {
+                firstTitle.click();
+            }
+        });
+    </script>
+</body>
+</html>
