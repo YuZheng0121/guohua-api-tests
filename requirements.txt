@@ -3,3 +3,4 @@ requests>=2.31
 pillow>=10.0
 pytest>=8.0
 pytest-html>=4.1
+playwright>=1.40
