@@ -217,7 +217,7 @@ def sync_templates() -> None:
     dst = SUT_DIR / 'templates'
     if dst.exists():
         shutil.rmtree(dst)
-    shutil.copytree(src, dst, ignore=shutil.ignore_patterns('app.py', '__pycache__'))
+    shutil.copytree(src, dst, ignore=shutil.ignore_patterns('app.py', '__pycache__', '*.bak'))
 
 
 def main() -> None:
