@@ -10,14 +10,21 @@
 
 ```bash
 pip install -r requirements.txt
-
-python -m pytest -q -rx                       # 接口测试（默认排除 e2e）
-# 20 passed, 9 xfailed
-
-python -m playwright install chromium         # 首次跑 E2E 需要
-python -m pytest -q -m e2e -rx                # 页面级 E2E
-# 7 passed, 2 xfailed
+python -m pytest -qrx
 ```
+
+预期结果：`20 passed, 9 deselected, 9 xfailed in ~2s`
+
+（`9 deselected` 是被 `-m "not e2e"` 排除的页面级 E2E 用例，属正常。）
+
+```bash
+python -m playwright install chromium
+python -m pytest -q -m e2e -rx
+```
+
+预期结果：`7 passed, 2 xfailed`。
+
+> ⚠️ Windows `cmd.exe` 不把 `#` 当注释符。复制命令时不要连同后面的说明一起复制，否则 `#` 会被当成参数传给程序。
 
 `xfailed` 不是失败，而是**已知未修复缺陷**：用例断言的是"正确契约"，当前实现不满足，因此预期失败；缺陷修复后它们会自动变成 XPASS，CI 保持绿色同时不掩盖问题。
 
