@@ -220,11 +220,90 @@ def sync_templates() -> None:
     shutil.copytree(src, dst, ignore=shutil.ignore_patterns('app.py', '__pycache__', '*.bak'))
 
 
+# ============ 缺陷修复（对应 docs/02 的 D11 / D17 / D18）============
+# 被测系统原版存在这些缺陷；本仓库已修复并用测试验证（xfail → XPASS）。
+# 放在 bootstrap 里是为了：重新生成 SUT 副本时，修复不会丢。
+APP_FIXES = [
+    # D11：open() 未指定编码，中文 Windows 默认 GBK 解码 UTF-8 中文 JSON 失败 → 500
+    ("with open(ids_file, 'r') as f:",
+     "with open(ids_file, 'r', encoding='utf-8') as f:", 2),
+    ("with open(copyright_file, 'r') as f:",
+     "with open(copyright_file, 'r', encoding='utf-8') as f:", 1),
+]
+
+TPL_FIXES = {
+    # D17：调用未定义的函数，每次加载抛 ReferenceError
+    'images.html': [
+        ("""            if (firstTitle) {
+                firstTitle.click();
+            }
+            loadFilterOptions();
+        });""",
+         """            if (firstTitle) {
+                firstTitle.click();
+            }
+            // 修复 BUG-D17：原代码在此调用 loadFilterOptions()，
+            // 但整个模板从未定义该函数，每次加载都抛 ReferenceError、中断初始化。
+            // 筛选选项由下方 Promise.all 拿到的接口数据渲染，无需此调用。
+        });"""),
+        # D18：fetch 未校验响应状态，500 时整批 Promise reject，计数全 0
+        ("""        // 加载数据
+        Promise.all([
+            fetch('api/images?page=1&per_page=20000').then(res => res.json()),
+            fetch('api/images_count').then(res => res.json()),
+            fetch('api/public_copyright_ids').then(res => res.json()),
+            fetch('api/public_copyright_ids?category=男').then(res => res.json()),
+            fetch('api/public_copyright_ids?category=女').then(res => res.json()),
+            fetch('api/public_copyright_ids?category=有男有女').then(res => res.json()),
+            fetch('api/public_copyright_ids?category=点景人物').then(res => res.json()),
+            fetch('api/stats').then(res => res.json())
+        ]).then(([result, countResult, allIds, maleIds, femaleIds, mixedIds, sceneIds, statsResult]) => {""",
+         """        // 加载数据
+        // 修复 BUG-D18：原实现直接 fetch(...).then(res => res.json())，未校验响应状态。
+        // 接口返回 500（HTML 错误页）时 res.json() 抛 SyntaxError，且 Promise.all 整批 reject，
+        // 导致所有筛选计数停在 0 且无任何提示。改为先校验 res.ok，失败抛出可读错误。
+        const fetchJson = (url) => fetch(url).then(res => {
+            if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
+            return res.json();
+        });
+        Promise.all([
+            fetchJson('api/images?page=1&per_page=20000'),
+            fetchJson('api/images_count'),
+            fetchJson('api/public_copyright_ids'),
+            fetchJson('api/public_copyright_ids?category=男'),
+            fetchJson('api/public_copyright_ids?category=女'),
+            fetchJson('api/public_copyright_ids?category=有男有女'),
+            fetchJson('api/public_copyright_ids?category=点景人物'),
+            fetchJson('api/stats')
+        ]).then(([result, countResult, allIds, maleIds, femaleIds, mixedIds, sceneIds, statsResult]) => {"""),
+    ],
+}
+
+
+def apply_fixes() -> None:
+    """把已修复的缺陷重新打到 SUT 副本上（修复记录见 docs/02）。"""
+    app_text = (SUT_DIR / 'app.py').read_text(encoding='utf-8')
+    for old, new, expected in APP_FIXES:
+        assert app_text.count(old) == expected, (
+            f'app.py 修复锚点异常：期望 {expected} 处，实际 {app_text.count(old)} 处 -> {old[:50]}')
+        app_text = app_text.replace(old, new)
+    (SUT_DIR / 'app.py').write_text(app_text, encoding='utf-8')
+
+    for name, fixes in TPL_FIXES.items():
+        path = SUT_DIR / 'templates' / name
+        text = path.read_text(encoding='utf-8')
+        for old, new in fixes:
+            assert text.count(old) == 1, f'{name} 修复锚点异常（{text.count(old)} 处）'
+            text = text.replace(old, new)
+        path.write_text(text, encoding='utf-8')
+
+
 def main() -> None:
     (SUT_DIR / 'data').mkdir(parents=True, exist_ok=True)
     (SUT_DIR / 'csv_data').mkdir(parents=True, exist_ok=True)
     patch_app()
     sync_templates()
+    apply_fixes()
     build_data()
     build_csv()
     print('SUT 就绪:', SUT_DIR / 'app.py')

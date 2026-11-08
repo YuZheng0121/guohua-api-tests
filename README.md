@@ -70,6 +70,22 @@ guohua-api-tests/
 
 另有 10 条静态分析发现的隐患（URL 拼接注入、全站关闭 TLS 校验、裸 `except`、无鉴权下载等），完整 18 条见 [缺陷清单](docs/02-缺陷清单.md)，含 4 份标准缺陷报告（复现步骤 / 期望 vs 实际 / 根因 / 影响 / 修复建议 / 回归用例）。
 
+## 修复记录（2026-11-08）
+
+已修复 3 个影响最直接的缺陷，**验证标准统一是"对应缺陷用例由 XFAIL 转为 XPASS"**：
+
+| 缺陷 | 修复内容 | 验证结果 |
+|---|---|---|
+| **D11** P1 | `open()` 增加 `encoding='utf-8'`（3 处），消除中文 Windows 下 GBK 解码失败 | 2 条用例 XPASS，`/api/images_count` 恢复 200 |
+| **D17** P2 | 删除 `images.html` 中对未定义函数 `loadFilterOptions()` 的调用 | 页面不再抛 ReferenceError |
+| **D18** P2 | 抽出 `fetchJson()`，先校验 `res.ok` 再解析，错误信息可读 | 页面加载无未捕获异常 |
+
+回归结果：`20 passed, 6 xfailed, 3 xpassed`（接口）＋ `7 passed, 2 xpassed`（E2E）。
+
+剩余 6 个缺陷（D01、D05、D06、D07、D13 等）保留为**已知问题**，对应 xfail 用例继续作为回归基线。
+
+> 修复通过 `tools/bootstrap_fixtures.py` 的 `apply_fixes()` 固化：重新生成 SUT 副本时会重新打补丁，`assert` 保证锚点不漂移。
+
 ## 设计上值得说的几点
 
 1. **测试数据与生产数据分离**：真实数据 549MB（`pose_results_all.json` 366MB），直接用于测试会让 CI 无法运行。改用 3 条定长记录的 seed 数据集，启动从分钟级降到秒级；代价是 SUT 需要支持 `GUOHUA_DATA_DIR` 注入——这就是"为可测性改造被测系统"。

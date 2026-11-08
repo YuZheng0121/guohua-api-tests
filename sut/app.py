@@ -546,7 +546,7 @@ def get_mingqing_ids():
     """返回明清仕女图ID列表"""
     ids_file = os.path.join(DATA_DIR, 'mingqing_ids.json')
     if os.path.exists(ids_file):
-        with open(ids_file, 'r') as f:
+        with open(ids_file, 'r', encoding='utf-8') as f:
             return jsonify(json.load(f))
     return jsonify([])
 
@@ -557,7 +557,7 @@ def get_public_copyright_ids():
     category = request.args.get('category')
     ids_file = os.path.join(DATA_DIR, 'public_copyright_by_category.json')
     if os.path.exists(ids_file):
-        with open(ids_file, 'r') as f:
+        with open(ids_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
         if category:
             return jsonify(data.get(category, []))
@@ -661,7 +661,7 @@ def get_images_count():
     copyright_file = os.path.join(DATA_DIR, 'public_copyright_by_category.json')
     copyright_data = {}
     if os.path.exists(copyright_file):
-        with open(copyright_file, 'r') as f:
+        with open(copyright_file, 'r', encoding='utf-8') as f:
             copyright_data = json.load(f)
     all_copyright_ids = []
     for ids in copyright_data.values():

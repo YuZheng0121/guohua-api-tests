@@ -633,15 +633,22 @@
         };
 
         // 加载数据
+        // 修复 BUG-D18：原实现直接 fetch(...).then(res => res.json())，未校验响应状态。
+        // 接口返回 500（HTML 错误页）时 res.json() 抛 SyntaxError，且 Promise.all 整批 reject，
+        // 导致所有筛选计数停在 0 且无任何提示。改为先校验 res.ok，失败抛出可读错误。
+        const fetchJson = (url) => fetch(url).then(res => {
+            if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
+            return res.json();
+        });
         Promise.all([
-            fetch('api/images?page=1&per_page=20000').then(res => res.json()),
-            fetch('api/images_count').then(res => res.json()),
-            fetch('api/public_copyright_ids').then(res => res.json()),
-            fetch('api/public_copyright_ids?category=男').then(res => res.json()),
-            fetch('api/public_copyright_ids?category=女').then(res => res.json()),
-            fetch('api/public_copyright_ids?category=有男有女').then(res => res.json()),
-            fetch('api/public_copyright_ids?category=点景人物').then(res => res.json()),
-            fetch('api/stats').then(res => res.json())
+            fetchJson('api/images?page=1&per_page=20000'),
+            fetchJson('api/images_count'),
+            fetchJson('api/public_copyright_ids'),
+            fetchJson('api/public_copyright_ids?category=男'),
+            fetchJson('api/public_copyright_ids?category=女'),
+            fetchJson('api/public_copyright_ids?category=有男有女'),
+            fetchJson('api/public_copyright_ids?category=点景人物'),
+            fetchJson('api/stats')
         ]).then(([result, countResult, allIds, maleIds, femaleIds, mixedIds, sceneIds, statsResult]) => {
             const images = result.items || result; // 兼容新旧格式
             allImageData = images; realTotalCount = countResult.total; realCategoryCount = countResult.category_count; realCopyrightCount = countResult.copyright_count;
@@ -1398,7 +1405,9 @@
             if (firstTitle) {
                 firstTitle.click();
             }
-            loadFilterOptions();
+            // 修复 BUG-D17：原代码在此调用 loadFilterOptions()，
+            // 但整个模板从未定义该函数，每次加载都抛 ReferenceError、中断初始化。
+            // 筛选选项由下方 Promise.all 拿到的接口数据渲染，无需此调用。
         });
 
         // 下载筛选结果
