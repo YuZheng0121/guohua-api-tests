@@ -3,6 +3,8 @@ test-output/
 pytest_run.log
 sut_run.log
 sut_run.err
+app.log
+*.log
 
 # Python
 __pycache__/

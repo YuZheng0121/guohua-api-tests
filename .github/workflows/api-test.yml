@@ -3,6 +3,15 @@ name: api-tests
 on:
   push:
     branches: [master, main]
+    # 只有会影响测试结果的路径才触发，避免改 README/docs 也跑一轮
+    paths:
+      - 'tests/**'
+      - 'sut/**'
+      - 'tools/**'
+      - 'conftest.py'
+      - 'pytest.ini'
+      - 'requirements.txt'
+      - '.github/workflows/api-test.yml'
   pull_request:
   workflow_dispatch:
 
