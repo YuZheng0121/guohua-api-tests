@@ -82,7 +82,7 @@ guohua-api-tests/
 
 回归结果：`20 passed, 6 xfailed, 3 xpassed`（接口）＋ `7 passed, 2 xpassed`（E2E）。
 
-剩余 6 个缺陷（D01、D05、D06、D07、D13 等）保留为**已知问题**，对应 xfail 用例继续作为回归基线。
+剩余 5 个已复现缺陷（D01 端口提示、D05 资源不存在返回 200、D06 分页负索引、D07 `per_page` 无上限、D13 标签空间混用）保留为**已知问题**，对应 xfail 用例继续作为回归基线；它们都需要产品决策或跨端改造，不适合在测试仓库里单方面修改。
 
 > 修复通过 `tools/bootstrap_fixtures.py` 的 `apply_fixes()` 固化：重新生成 SUT 副本时会重新打补丁，`assert` 保证锚点不漂移。
 
