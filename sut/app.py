@@ -1,6 +1,6 @@
 # ============================================================
-# 本文件是某课题组内部 WebUI 的脱敏副本，仅做了 4 处可测性改造
-# （DATA_DIR / CSV_DIR / PORT / CLOUD_BASE 支持环境变量），业务逻辑未改动；
+# 本文件是某课题组内部 WebUI 的脱敏副本，仅做了 5 处可测性改造
+# （DATA_DIR / CSV_DIR / PORT / CLOUD_BASE / 瓦片地址支持环境变量），业务逻辑未改动；
 # 云端服务域名已替换为示例域名，seed 数据为合成数据。
 # 缺陷保持原样，见 docs/02-缺陷清单.md
 # ============================================================
@@ -213,7 +213,7 @@ def get_cloud_image_size(uuid):
 # 注意：不能按宽高比猜测是否截断——直接下载云端图，对比 API 报告尺寸与
 # 实际尺寸的宽高比：等比缩放=未截断（正常展示），比例变了=被截断（走拼接）。
 
-SCROLL_TILE_URL = "https://cloud.example.invalid/server/getobjects?bucket=images&path=tcp03tiles512/{}.jpg"
+SCROLL_TILE_URL = CLOUD_BASE + "/server/getobjects?bucket=images&path=tcp03tiles512/{}.jpg"
 SCROLL_CACHE_DIR = os.path.join(DATA_DIR, 'scroll_cache')
 _tile_path_cache = {}  # uuid -> tilesPath 或 None
 
@@ -241,7 +241,7 @@ def get_tile_base_url(uuid):
     """返回该图瓦片金字塔的基础URL，无瓦片返回None"""
     tp = get_tiles_path(uuid)
     if tp:
-        return f'https://cloud.example.invalid/server/getobjects?bucket=images&path={tp}'
+        return f'{CLOUD_BASE}/server/getobjects?bucket=images&path={tp}'
     return None
 _scroll_locks = {}
 _scroll_locks_guard = threading.Lock()

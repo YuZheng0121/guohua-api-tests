@@ -76,10 +76,20 @@ def patch_app() -> None:
     assert text.count(old_post) == 3, f'云端 POST 锚点异常: {text.count(old_post)}'
     text = text.replace(old_post, "CLOUD_BASE + '/server/getworkinfobyimageid'")
 
+    # 瓦片 URL 也统一走 CLOUD_BASE（否则 mock 不到瓦片金字塔）
+    old_tile = 'SCROLL_TILE_URL = "https://cloud.example.invalid/server/getobjects?bucket=images&path=tcp03tiles512/{}.jpg"'
+    new_tile = 'SCROLL_TILE_URL = CLOUD_BASE + "/server/getobjects?bucket=images&path=tcp03tiles512/{}.jpg"'
+    assert text.count(old_tile) == 1, f'瓦片常量锚点异常: {text.count(old_tile)}'
+    text = text.replace(old_tile, new_tile)
+    old_tb = "    return f'https://cloud.example.invalid/server/getobjects?bucket=images&path={tp}'"
+    new_tb = "    return f'{CLOUD_BASE}/server/getobjects?bucket=images&path={tp}'"
+    assert text.count(old_tb) == 1, f'瓦片 base 锚点异常: {text.count(old_tb)}'
+    text = text.replace(old_tb, new_tb)
+
     header = (
         '# ============================================================\n'
-        '# 本文件是某课题组内部 WebUI 的脱敏副本，仅做了 4 处可测性改造\n'
-        '# （DATA_DIR / CSV_DIR / PORT / CLOUD_BASE 支持环境变量），业务逻辑未改动；\n'
+        '# 本文件是某课题组内部 WebUI 的脱敏副本，仅做了 5 处可测性改造\n'
+        '# （DATA_DIR / CSV_DIR / PORT / CLOUD_BASE / 瓦片地址支持环境变量），业务逻辑未改动；\n'
         '# 云端服务域名已替换为示例域名，seed 数据为合成数据。\n'
         '# 缺陷保持原样，见 docs/02-缺陷清单.md\n'
         '# ============================================================\n'

@@ -89,3 +89,31 @@ def test_scroll_cloud_unavailable_should_not_mask_error(api, fake_cloud, seed_id
     fake_cloud.set_mode('workinfo_500')
     r = api.get(f"{api.base_url}/api/scroll/{seed_ids['det_only']}")
     assert r.status_code >= 500 or (r.json() or {}).get('error')
+
+@pytest.mark.smoke
+def test_scroll_stitched_success(api, fake_cloud, seed_ids):
+    """云端图被切割时，长卷接口应把瓦片拼成完整图返回。
+
+    假云端让 API 报 10000x1000、实际图 1x1 → SUT 判定"被切割" → 走瓦片拼接（2x1 网格）。
+    """
+    from io import BytesIO
+
+    from PIL import Image
+
+    fake_cloud.set_mode('scroll_ok')
+    r = api.get(f"{api.base_url}/api/scroll/{seed_ids['full']}")
+    assert r.status_code == 200
+    assert r.headers['Content-Type'].startswith('image/')
+    w, h = Image.open(BytesIO(r.content)).size
+    # 2 块瓦片横向拼接 → 1024x512
+    assert (w, h) == (1024, 512)
+
+
+@pytest.mark.defect
+@pytest.mark.xfail(reason='BUG-D22: 瓦片缺失时 build_scroll_image 吞掉异常继续拼接，'
+                          '返回 200 + 半张白图，调用方无法感知长卷不完整', strict=False)
+def test_scroll_partial_tiles_should_not_return_partial_image(api, fake_cloud, seed_ids):
+    """缺一块瓦片时，应返回明确错误，而不是 200 + 残缺图。"""
+    fake_cloud.set_mode('scroll_tile_404')
+    r = api.get(f"{api.base_url}/api/scroll/{seed_ids['cit_only']}")
+    assert r.status_code >= 500 or (r.content[:2] != b'\xff\xd8')
