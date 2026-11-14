@@ -2,7 +2,7 @@
 
 [![api-tests](https://github.com/YuZheng0121/guohua-api-tests/actions/workflows/api-test.yml/badge.svg)](https://github.com/YuZheng0121/guohua-api-tests/actions/workflows/api-test.yml)
 
-对一个真实 Flask 项目的接口层与页面层做自动化测试与缺陷挖掘：**21 个路由、44 条用例、发现 10 个已复现缺陷**，CI 双 Python 版本矩阵 + 独立 E2E job，全部通过。
+对一个真实 Flask 项目的接口层与页面层做自动化测试与缺陷挖掘：**21 个路由、46 条用例、发现 11 个已复现缺陷**，CI 双 Python 版本矩阵 + 独立 E2E job，全部通过。
 
 被测系统（SUT）是一个真实的课题组内部 WebUI（992 行，中国绘画关键点/检测结果可视化），脱敏副本见 [`sut/app.py`](sut/app.py)。测试过程中对 SUT 只做了 3 处**可测性改造**（数据目录 / CSV 目录 / 端口支持环境变量），业务逻辑一行没改——缺陷保持原样，因为它才是测试对象。
 
@@ -13,7 +13,7 @@ pip install -r requirements.txt
 python -m pytest -qrx
 ```
 
-预期结果：`24 passed, 9 deselected, 8 xfailed, 3 xpassed in ~4s`
+预期结果：`25 passed, 9 deselected, 9 xfailed, 3 xpassed in ~5s`
 
 （`9 deselected` 是被 `-m "not e2e"` 排除的页面级 E2E 用例，属正常。）
 
@@ -68,7 +68,7 @@ guohua-api-tests/
 | D17 | `images.html` 调用从未定义的 `loadFilterOptions()`，每次加载抛 ReferenceError | 前端 | P2 |
 | D18 | 前端 `fetch().then(r => r.json())` 未校验响应类型，单接口 500 导致整批失败 | 前端健壮性 | P2 |
 
-另有 10 条静态分析发现的隐患（URL 拼接注入、全站关闭 TLS 校验、裸 `except`、无鉴权下载等），完整 20 条见 [缺陷清单](docs/02-缺陷清单.md)，含 4 份标准缺陷报告（复现步骤 / 期望 vs 实际 / 根因 / 影响 / 修复建议 / 回归用例）。
+另有 10 条静态分析发现的隐患（URL 拼接注入、全站关闭 TLS 校验、裸 `except`、无鉴权下载等），完整 21 条见 [缺陷清单](docs/02-缺陷清单.md)，含 4 份标准缺陷报告（复现步骤 / 期望 vs 实际 / 根因 / 影响 / 修复建议 / 回归用例）。
 
 ## 修复记录（2026-11-08）
 
@@ -80,7 +80,7 @@ guohua-api-tests/
 | **D17** P2 | 删除 `images.html` 中对未定义函数 `loadFilterOptions()` 的调用 | 页面不再抛 ReferenceError |
 | **D18** P2 | 抽出 `fetchJson()`，先校验 `res.ok` 再解析，错误信息可读 | 页面加载无未捕获异常 |
 
-回归结果：`24 passed, 8 xfailed, 3 xpassed`（接口）＋ `7 passed, 2 xpassed`（E2E）。
+回归结果：`25 passed, 9 xfailed, 3 xpassed`（接口）＋ `7 passed, 2 xpassed`（E2E）。
 
 剩余 5 个已复现缺陷（D01 端口提示、D05 资源不存在返回 200、D06 分页负索引、D07 `per_page` 无上限、D13 标签空间混用）保留为**已知问题**，对应 xfail 用例继续作为回归基线；它们都需要产品决策或跨端改造，不适合在测试仓库里单方面修改。
 
@@ -109,3 +109,18 @@ guohua-api-tests/
 1. 云端服务域名统一替换为不可解析的示例域名（`cloud.example.invalid`）
 2. 全部 seed 数据为**合成数据**，不含真实藏品元数据、标注结果与数据集 ID
 3. 仅保留测试所需的最小数据规模（原真实数据 549MB，仓库内约 550KB）
+
+## 性能基线（tools/bench.py）
+
+轻量压测（不用 Locust，线程池并发打本地 SUT），`GET /api/images?per_page=50`：
+
+| 并发 | 请求数 | 成功率 | P50 | P95 | RPS |
+|---|---|---|---|---|---|
+| 1 | 50 | 100% | 8.3 ms | 24.1 ms | 101 |
+| 10 | 100 | 100% | 34.5 ms | 38.2 ms | 29.5 |
+| 20 | 200 | 100% | 87.6 ms | 95.4 ms | 12.2 |
+
+**结论（可讲的分析）**：服务端单请求约 8 ms；并发升高后**吞吐反而下降**（101 → 29.5 → 12.2 RPS），
+说明瓶颈先在**压测客户端**（单进程线程池 + 每请求新建连接 + GIL），而不是服务端。
+要压出服务端真实上限，需要多进程压测工具（Locust）或把连接池复用起来。
+

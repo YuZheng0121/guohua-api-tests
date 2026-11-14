@@ -71,3 +71,21 @@ def test_cloud_url_when_resolve_fails_should_signal_error(api, fake_cloud, seed_
     fake_cloud.set_mode('workinfo_500')
     r = api.get(f"{api.base_url}/api/cloud_url/{seed_ids['cit_only']}")
     assert r.status_code >= 400 or r.json().get('url')
+
+@pytest.mark.smoke
+def test_scroll_missing_uuid_should_404(api, fake_cloud):
+    """不存在的 uuid 请求长卷接口，应返回 404。"""
+    # 让云端对图片请求返回 404：长卷接口会降级到缩略图，最终应为 404
+    fake_cloud.set_mode('objects_404')
+    r = api.get(f"{api.base_url}/api/scroll/deadbeef-0000-4000-8000-000000000000")
+    assert r.status_code == 404
+
+
+@pytest.mark.defect
+@pytest.mark.xfail(reason='BUG-D21: /api/scroll 在云端解析失败时一路降级到 get_thumbnail，'
+                          '最终返回 404 空 body，把「云端故障」伪装成「资源不存在」', strict=False)
+def test_scroll_cloud_unavailable_should_not_mask_error(api, fake_cloud, seed_ids):
+    """云端不可用时，长卷接口应返回 5xx/明确错误，而不是伪装成 404。"""
+    fake_cloud.set_mode('workinfo_500')
+    r = api.get(f"{api.base_url}/api/scroll/{seed_ids['det_only']}")
+    assert r.status_code >= 500 or (r.json() or {}).get('error')
