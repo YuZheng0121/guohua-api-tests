@@ -86,6 +86,24 @@ def patch_app() -> None:
     assert text.count(old_tb) == 1, f'瓦片 base 锚点异常: {text.count(old_tb)}'
     text = text.replace(old_tb, new_tb)
 
+    # 修复 BUG-D24：版权数只统计当前数据集内的 ID，避免 copyright_count > total
+    old_cnt = """    return jsonify({
+        'total': len(detection_dict) + cit_only,
+        'category_count': dict(cat_count),
+        'copyright_count': len(set(all_copyright_ids))
+    })"""
+    new_cnt = """    # 修复 BUG-D24：版权 ID 来自全量清单，total 来自当前数据集，直接返回长度会 > total
+    dataset_ids = set(detection_dict) | {u for u in cit_dict if u not in detection_dict}
+    copyright_count = len(set(all_copyright_ids) & dataset_ids)
+
+    return jsonify({
+        'total': len(detection_dict) + cit_only,
+        'category_count': dict(cat_count),
+        'copyright_count': copyright_count
+    })"""
+    assert text.count(old_cnt) == 1, f'D24 后端锚点异常: {text.count(old_cnt)}'
+    text = text.replace(old_cnt, new_cnt)
+
     header = (
         '# ============================================================\n'
         '# 本文件是某课题组内部 WebUI 的脱敏副本，仅做了 5 处可测性改造\n'
@@ -179,11 +197,13 @@ def build_data() -> None:
 
     # 全部换成合成数据：真实数据属于课题组整理成果，不随公开仓库分发
     write_json('shinu_52_website.json', _synthetic_shinu52())
+    # seed 数据必须自洽：版权清单只能包含数据集里真实存在的 3 个 ID
+    # （曾经混入 4444/5555/6666 三个不存在的 ID，导致公开版权数 6 > 总数 3、页面显示「非公开 -3」= BUG-D24）
     write_json('public_copyright_by_category.json', {
-        '男': [U2, '44444444-4444-4444-8444-444444444444'],
-        '女': [U1, '55555555-5555-4555-8555-555555555555'],
+        '男': [U2],
+        '女': [U1],
         '点景人物': [U3],
-        '有男有女': ['66666666-6666-4666-8666-666666666666'],
+        '有男有女': [U1],
     })
     write_json('image_size_cache.json', {
         U1: [2048, 1589],
@@ -256,6 +276,11 @@ APP_FIXES = [
 TPL_FIXES = {
     # E2E 稳定性：Chart.js 原来引用公网 CDN，网络抖动会让页面抛 "Chart is not defined"，
     # 导致 E2E 假失败。改为引用仓库内静态文件（sut/static/vendor/chart.umd.min.js）。
+    # 修复 BUG-D24 的界面表现：非公开计数可能为负
+    'images.html': [
+        ('let nonCopyrightCount = realTotalCount - realCopyrightCount;',
+         'let nonCopyrightCount = Math.max(0, realTotalCount - realCopyrightCount);'),
+    ],
     'index.html': [
         ('<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>',
          '<script src="/static/vendor/chart.umd.min.js"></script>'),

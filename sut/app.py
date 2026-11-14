@@ -671,10 +671,14 @@ def get_images_count():
     # CIT-only图片数
     cit_only = sum(1 for uuid in cit_dict if uuid not in detection_dict)
 
+    # 修复 BUG-D24：版权 ID 来自全量清单，total 来自当前数据集，直接返回长度会 > total
+    dataset_ids = set(detection_dict) | {u for u in cit_dict if u not in detection_dict}
+    copyright_count = len(set(all_copyright_ids) & dataset_ids)
+
     return jsonify({
         'total': len(detection_dict) + cit_only,
         'category_count': dict(cat_count),
-        'copyright_count': len(set(all_copyright_ids))
+        'copyright_count': copyright_count
     })
 
 @app.route('/api/images')
