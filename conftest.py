@@ -20,6 +20,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parent
 SUT_APP = ROOT / 'sut' / 'app.py'
+FAKE_CLOUD_APP = ROOT / 'tools' / 'fake_cloud.py'
 DATA_DIR = ROOT / 'sut' / 'data'
 CSV_DIR = ROOT / 'sut' / 'csv_data'
 LOG_DIR = ROOT / 'test-output'
@@ -68,8 +69,62 @@ def _wait_ready(proc: subprocess.Popen, base_url: str) -> None:
     pytest.fail(f'SUT 在 {READY_TIMEOUT}s 内未就绪: {last_err}\n--- SUT 日志 ---\n{_sut_log_tail()}')
 
 
+class _FakeCloud:
+    """本地假云端的句柄：base 给 SUT 用，set_mode 给用例切换行为。"""
+
+    def __init__(self, base: str, proc: subprocess.Popen):
+        self.base = base
+        self.proc = proc
+
+    def set_mode(self, mode: str) -> None:
+        resp = requests.post(f'{self.base}/__mode', json={'mode': mode}, timeout=5)
+        resp.raise_for_status()
+
+
 @pytest.fixture(scope='session')
-def base_url():
+def fake_cloud():
+    """启动本地假云端，模拟 SUT 依赖的外部对象存储。
+
+    为什么需要它：SUT 是独立子进程，测试进程里的 requests-mock
+    拦不到它发出的请求；所以给 SUT 加 GUOHUA_CLOUD_BASE 入口，
+    把云端地址指向本服务，才能覆盖「第三方成功/500/404」分支。
+    """
+    port = _free_port()
+    base = f'http://127.0.0.1:{port}'
+    env = os.environ.copy()
+    env.update({'FAKE_CLOUD_PORT': str(port), 'PYTHONIOENCODING': 'utf-8'})
+    LOG_DIR.mkdir(exist_ok=True)
+    log_fh = open(LOG_DIR / 'fake_cloud.log', 'wb')
+    proc = subprocess.Popen(
+        [sys.executable, str(FAKE_CLOUD_APP)],
+        env=env,
+        stdout=log_fh,
+        stderr=subprocess.STDOUT,
+    )
+    try:
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            if proc.poll() is not None:
+                pytest.fail(f'假云端提前退出（code={proc.returncode}）')
+            try:
+                if requests.get(f'{base}/__mode', timeout=1).status_code == 200:
+                    break
+            except requests.RequestException:
+                pass
+            time.sleep(0.2)
+        else:
+            pytest.fail('假云端 30s 内未就绪')
+    except BaseException:
+        _terminate(proc)
+        log_fh.close()
+        raise
+    yield _FakeCloud(base, proc)
+    _terminate(proc)
+    log_fh.close()
+
+
+@pytest.fixture(scope='session')
+def base_url(fake_cloud):
     """启动 SUT 子进程（独立端口 + seed 数据），返回 base_url。
 
     注意：SUT 的 stdout/stderr 必须重定向到文件而不是 subprocess.PIPE。
@@ -84,6 +139,7 @@ def base_url():
         'GUOHUA_DATA_DIR': str(DATA_DIR),
         'GUOHUA_CSV_DIR': str(CSV_DIR),
         'GUOHUA_PORT': str(port),
+        'GUOHUA_CLOUD_BASE': fake_cloud.base,
         'PYTHONIOENCODING': 'utf-8',
     })
     LOG_DIR.mkdir(exist_ok=True)

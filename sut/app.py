@@ -1,6 +1,6 @@
 # ============================================================
-# 本文件是某课题组内部 WebUI 的脱敏副本，仅做了 3 处可测性改造
-# （DATA_DIR / CSV_DIR / PORT 支持环境变量），业务逻辑未改动；
+# 本文件是某课题组内部 WebUI 的脱敏副本，仅做了 4 处可测性改造
+# （DATA_DIR / CSV_DIR / PORT / CLOUD_BASE 支持环境变量），业务逻辑未改动；
 # 云端服务域名已替换为示例域名，seed 数据为合成数据。
 # 缺陷保持原样，见 docs/02-缺陷清单.md
 # ============================================================
@@ -32,7 +32,8 @@ IMAGES_DIR = os.path.join(HOME, 'yolo/data/raw/images')
 CSV_DIR = os.environ.get('GUOHUA_CSV_DIR') or os.path.join(os.path.dirname(__file__), 'csv_data')
 
 # 云端图片服务
-CLOUD_IMAGE_URL = "https://cloud.example.invalid/server/getobjects?bucket=images&path="
+CLOUD_BASE = os.environ.get('GUOHUA_CLOUD_BASE', 'https://cloud.example.invalid')
+CLOUD_IMAGE_URL = CLOUD_BASE + "/server/getobjects?bucket=images&path="
 
 # 图片路径缓存
 image_path_cache = {}
@@ -43,7 +44,7 @@ def get_image_path(uuid):
         return image_path_cache[uuid]
     try:
         resp = requests.post(
-            'https://cloud.example.invalid/server/getworkinfobyimageid',
+            CLOUD_BASE + '/server/getworkinfobyimageid',
             json={'imageId': uuid},
             timeout=10,
             verify=False
@@ -189,7 +190,7 @@ def get_cloud_image_size(uuid):
     size = []
     try:
         resp = requests.post(
-            'https://cloud.example.invalid/server/getworkinfobyimageid',
+            CLOUD_BASE + '/server/getworkinfobyimageid',
             json={'imageId': uuid},
             timeout=5,
             verify=False
@@ -224,7 +225,7 @@ def get_tiles_path(uuid):
     path = None
     try:
         resp = requests.post(
-            'https://cloud.example.invalid/server/getworkinfobyimageid',
+            CLOUD_BASE + '/server/getworkinfobyimageid',
             json={'imageId': uuid},
             timeout=8, verify=False
         )

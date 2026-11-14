@@ -64,10 +64,22 @@ def patch_app() -> None:
         r'https://[A-Za-z0-9.\-]+/server/', 'https://cloud.example.invalid/server/', text
     )
     assert replaced >= 5, f'云端域名脱敏条数异常: {replaced}'
+    # 第 4 处可测性改造：云端地址可被环境变量覆盖，便于用本地假云端做第三方 mock
+    old_const = 'CLOUD_IMAGE_URL = "https://cloud.example.invalid/server/getobjects?bucket=images&path="'
+    new_const = (
+        "CLOUD_BASE = os.environ.get('GUOHUA_CLOUD_BASE', 'https://cloud.example.invalid')\n"
+        'CLOUD_IMAGE_URL = CLOUD_BASE + "/server/getobjects?bucket=images&path="'
+    )
+    assert text.count(old_const) == 1, f'云端常量锚点异常: {text.count(old_const)}'
+    text = text.replace(old_const, new_const)
+    old_post = "'https://cloud.example.invalid/server/getworkinfobyimageid'"
+    assert text.count(old_post) == 3, f'云端 POST 锚点异常: {text.count(old_post)}'
+    text = text.replace(old_post, "CLOUD_BASE + '/server/getworkinfobyimageid'")
+
     header = (
         '# ============================================================\n'
-        '# 本文件是某课题组内部 WebUI 的脱敏副本，仅做了 3 处可测性改造\n'
-        '# （DATA_DIR / CSV_DIR / PORT 支持环境变量），业务逻辑未改动；\n'
+        '# 本文件是某课题组内部 WebUI 的脱敏副本，仅做了 4 处可测性改造\n'
+        '# （DATA_DIR / CSV_DIR / PORT / CLOUD_BASE 支持环境变量），业务逻辑未改动；\n'
         '# 云端服务域名已替换为示例域名，seed 数据为合成数据。\n'
         '# 缺陷保持原样，见 docs/02-缺陷清单.md\n'
         '# ============================================================\n'
