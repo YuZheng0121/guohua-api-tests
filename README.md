@@ -2,7 +2,7 @@
 
 [![api-tests](https://github.com/YuZheng0121/guohua-api-tests/actions/workflows/api-test.yml/badge.svg)](https://github.com/YuZheng0121/guohua-api-tests/actions/workflows/api-test.yml)
 
-对一个真实 Flask 项目的接口层与页面层做自动化测试与缺陷挖掘：**21 个路由、54 条用例、发现 15 个已复现缺陷**，CI 双 Python 版本矩阵 + 独立 E2E job，全部通过。
+对一个真实 Flask 项目的接口层与页面层做自动化测试与缺陷挖掘：**21 个路由、55 条用例、发现 15 个已复现缺陷**，CI 双 Python 版本矩阵 + 独立 E2E job，全部通过。
 
 被测系统（SUT）是一个真实的课题组内部 WebUI（992 行，中国绘画关键点/检测结果可视化），脱敏副本见 [`sut/app.py`](sut/app.py)。测试过程中对 SUT 只做了 3 处**可测性改造**（数据目录 / CSV 目录 / 端口支持环境变量），业务逻辑一行没改——缺陷保持原样，因为它才是测试对象。
 
@@ -13,7 +13,7 @@ pip install -r requirements.txt
 python -m pytest -qrx
 ```
 
-预期结果：`26 passed, 9 deselected, 13 xfailed, 5 xpassed in ~3s`
+预期结果：`26 passed, 9 deselected, 14 xfailed, 5 xpassed in ~3s`
 
 （`9 deselected` 是被 `-m "not e2e"` 排除的页面级 E2E 用例，属正常。）
 
@@ -80,7 +80,7 @@ guohua-api-tests/
 | **D17** P2 | 删除 `images.html` 中对未定义函数 `loadFilterOptions()` 的调用 | 页面不再抛 ReferenceError |
 | **D18** P2 | 抽出 `fetchJson()`，先校验 `res.ok` 再解析，错误信息可读 | 页面加载无未捕获异常 |
 
-回归结果：`26 passed, 13 xfailed, 5 xpassed`（接口）＋ `7 passed, 2 xpassed`（E2E）。
+回归结果：`26 passed, 14 xfailed, 5 xpassed`（接口）＋ `7 passed, 2 xpassed`（E2E）。
 
 剩余 5 个已复现缺陷（D01 端口提示、D05 资源不存在返回 200、D06 分页负索引、D07 `per_page` 无上限、D13 标签空间混用）保留为**已知问题**，对应 xfail 用例继续作为回归基线；它们都需要产品决策或跨端改造，不适合在测试仓库里单方面修改。
 

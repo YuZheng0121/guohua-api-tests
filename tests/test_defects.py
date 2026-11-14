@@ -115,3 +115,27 @@ def test_images_count_total_contract(api):
     images = api.get(f'{api.base_url}/api/images').json()
     assert count['total'] == images['total'] == 3
 
+@pytest.mark.defect
+@pytest.mark.xfail(reason='BUG-D06: 负页码配合小 per_page 时，Python 负索引切片会返回「列表尾部」数据，'
+                          '非法参数却拿到了看似正常的数据（比返回空列表更危险）', strict=False)
+def test_negative_page_should_not_return_tail_data(api):
+    page, per_page = -1, 1   # 唯一能在 3 条数据上复现「取到尾部」的组合
+    """page 为负数时，不能返回"列表尾部"的数据。
+
+    为什么不能只测 page=0：两者不是同一个等价类。
+    - page=0  → start:end = [-10:0] 恒为空
+    - page=-1 → start:end = [-2:-1]，会取到倒数第二条（静默返回错数据）
+
+    判定方法：负页码若返回 200 且有数据，其内容必须与「第一页」一致（归一化兜底），
+    否则就是取了尾部数据。
+    """
+    # 现象依赖数据条数与 per_page 的相对大小：3 条数据下 (-1, 1) 会取到索引 1（第二条）
+    first = api.get(f'{api.base_url}/api/images', params={'page': 1, 'per_page': per_page}).json()['items']
+    body = api.get(f'{api.base_url}/api/images', params={'page': page, 'per_page': per_page}).json()
+    items = body['items']
+    if body.get('total') == 0 or not items:
+        return  # 空结果或明确无数据，可接受
+    first_ids = [i['uuid'] for i in first]
+    got_ids = [i['uuid'] for i in items]
+    assert got_ids == first_ids, (
+        f'page={page}&per_page={per_page} 返回 {len(items)} 条，但与第一页不一致 → 疑似负索引取到尾部数据')
