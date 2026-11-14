@@ -254,6 +254,16 @@ APP_FIXES = [
 ]
 
 TPL_FIXES = {
+    # E2E 稳定性：Chart.js 原来引用公网 CDN，网络抖动会让页面抛 "Chart is not defined"，
+    # 导致 E2E 假失败。改为引用仓库内静态文件（sut/static/vendor/chart.umd.min.js）。
+    'index.html': [
+        ('<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>',
+         '<script src="/static/vendor/chart.umd.min.js"></script>'),
+    ],
+    'shinu.html': [
+        ('<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>',
+         '<script src="/static/vendor/chart.umd.min.js"></script>'),
+    ],
     # D17：调用未定义的函数，每次加载抛 ReferenceError
     'images.html': [
         ("""            if (firstTitle) {

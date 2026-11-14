@@ -126,3 +126,19 @@ def test_images_filter_counts_not_all_zero(page, base_url):
         page.locator('#filterMixedCount').inner_text(),
     ]
     assert any(c.strip() not in ('(0)', '0', '') for c in counts), f'计数全为 0: {counts}'
+
+@pytest.mark.e2e
+@pytest.mark.xfail(reason='BUG-D24 的界面表现：非公开版权 = 总数 - 公开数，两个口径不同源，'
+                          '页面显示负数「非公开版权 (-3)」', strict=False)
+def test_images_page_counts_not_negative(page, base_url):
+    """页面上的筛选计数不能是负数（负数说明统计口径算错了）。"""
+    import re
+    page.goto(f'{base_url}/images', wait_until='networkidle')
+    page.wait_for_function(
+        "document.getElementById('filterNonCopyrightCount') && "
+        "document.getElementById('filterNonCopyrightCount').textContent.includes('(')"
+    )
+    text = page.inner_text('#filterNonCopyrightCount')
+    m = re.search(r'\((-?\d+)\)', text)
+    assert m, f'计数格式异常: {text!r}'
+    assert int(m.group(1)) >= 0, f'非公开版权计数为负: {text}'
