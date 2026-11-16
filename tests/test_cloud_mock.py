@@ -12,6 +12,13 @@
 """
 import pytest
 
+import os
+
+pytestmark = pytest.mark.skipif(
+    bool(os.getenv('GUOHUA_EXTERNAL_BASE')),
+    reason='外部模式：假云端需与 SUT 配对部署，真实数据验证不跑云端 mock 用例',
+)
+
 
 @pytest.mark.smoke
 def test_thumb_success(api, fake_cloud, seed_ids):

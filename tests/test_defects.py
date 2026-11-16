@@ -107,6 +107,7 @@ def test_public_copyright_ids_should_not_depend_on_encoding(api):
     assert r.status_code == 200, f'实际 {r.status_code}：{r.text[:150]}'
 
 
+@pytest.mark.seedonly
 @pytest.mark.xfail(reason='BUG-D05b: /api/images_count 的 total 与 /api/images 口径应一致，当前因 D11 无法验证',
                    strict=False)
 def test_images_count_total_contract(api):

@@ -17,6 +17,7 @@ def test_page_routes_available(api, path):
     assert 'text/html' in r.headers.get('Content-Type', '')
 
 
+@pytest.mark.seedonly
 def test_images_list_default_pagination(api):
     """/api/images 默认返回全部分页信息，且 total 覆盖 detection + CIT-only"""
     r = api.get(f'{api.base_url}/api/images')
@@ -28,6 +29,7 @@ def test_images_list_default_pagination(api):
     assert all({'uuid', 'category', 'labels', 'num_detections'} <= set(i) for i in body['items'])
 
 
+@pytest.mark.seedonly
 def test_images_list_pagination_boundary(api):
     """正常分页：page=2, per_page=2 应返回第 3 条，且 total 不变"""
     r = api.get(f'{api.base_url}/api/images', params={'page': 2, 'per_page': 2})
@@ -36,6 +38,7 @@ def test_images_list_pagination_boundary(api):
     assert len(body['items']) == 1
 
 
+@pytest.mark.seedonly
 @pytest.mark.parametrize('keyword,expected', [('1111', 1), ('ffff', 0)])
 def test_images_uuid_search(api, keyword, expected):
     """/api/images?search= 按 UUID 子串模糊匹配，大小写不敏感"""
@@ -43,6 +46,7 @@ def test_images_uuid_search(api, keyword, expected):
     assert r.json()['total'] == expected
 
 
+@pytest.mark.seedonly
 def test_image_detail_full_record(api, seed_ids):
     """/api/image/<uuid> 聚合 pose / detection / cit / dino 四个数据源"""
     r = api.get(f'{api.base_url}/api/image/{seed_ids["full"]}')
@@ -54,6 +58,7 @@ def test_image_detail_full_record(api, seed_ids):
     assert body['dino']['num_detections'] == 1
 
 
+@pytest.mark.seedonly
 def test_image_detail_filters_low_confidence_keypoints(api, seed_ids):
     """业务规则：关键点置信度 <= 0.3 不应返回给前端"""
     body = api.get(f'{api.base_url}/api/image/{seed_ids["full"]}').json()
@@ -63,6 +68,7 @@ def test_image_detail_filters_low_confidence_keypoints(api, seed_ids):
     assert body['pose']['total_keypoints'] == 133
 
 
+@pytest.mark.seedonly
 def test_stats_aggregation(api):
     """/api/stats 各维度统计口径一致：分类/朝代/关键点总数"""
     body = api.get(f'{api.base_url}/api/stats').json()
@@ -73,6 +79,7 @@ def test_stats_aggregation(api):
     assert 0 < body['avg_confidence'] <= 1
 
 
+@pytest.mark.seedonly
 def test_filter_options_include_csv_dynasty(api):
     """朝代选项来自 CSV（验证 CSV_DIR 注入生效，同时守护「数据源缺失静默降级」缺陷 D02）"""
     body = api.get(f'{api.base_url}/api/filter_options').json()
@@ -81,6 +88,7 @@ def test_filter_options_include_csv_dynasty(api):
     assert 'objects.fan' in body['cit_labels']
 
 
+@pytest.mark.seedonly
 def test_filter_by_category(api):
     """/api/filter 单条件筛选"""
     body = api.get(f'{api.base_url}/api/filter', params={'category': '女'}).json()
@@ -88,6 +96,7 @@ def test_filter_by_category(api):
     assert body['items'][0]['uuid'].startswith('1111')
 
 
+@pytest.mark.seedonly
 def test_filter_multi_condition_is_and(api):
     """多条件之间为 AND 关系"""
     body = api.get(f'{api.base_url}/api/filter',
@@ -95,6 +104,7 @@ def test_filter_multi_condition_is_and(api):
     assert body['total'] == 0
 
 
+@pytest.mark.seedonly
 def test_human_annotations_skip_unannotated(api, seed_ids):
     """业务规则：atrID 为空的记录不进入人工标注列表"""
     body = api.get(f'{api.base_url}/api/human_annotations').json()
@@ -103,6 +113,7 @@ def test_human_annotations_skip_unannotated(api, seed_ids):
     assert body['items'][0]['num_local'] == 2
 
 
+@pytest.mark.seedonly
 def test_human_stats_consistency(api):
     """/api/human_stats 的 total 应与列表接口口径一致"""
     stats = api.get(f'{api.base_url}/api/human_stats').json()
@@ -125,6 +136,7 @@ def test_shinu52_returns_52_items(api):
     assert {'id', 'title', 'dynasty', 'keypoints'} <= set(body[0])
 
 
+@pytest.mark.seedonly
 def test_mingqing_ids_returns_list(api, seed_ids):
     """/api/mingqing_ids 返回 ID 列表（该文件为纯 ASCII，不受编码缺陷影响）"""
     body = api.get(f'{api.base_url}/api/mingqing_ids').json()

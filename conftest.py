@@ -124,14 +124,26 @@ def fake_cloud():
 
 
 @pytest.fixture(scope='session')
-def base_url(fake_cloud):
-    """启动 SUT 子进程（独立端口 + seed 数据），返回 base_url。
+def base_url(request):
+    """返回被测服务地址（两种模式）。
+
+    1. 本地（默认）：自起假云端 + SUT 子进程（seed 数据），结束回收；
+    2. 外部（`GUOHUA_EXTERNAL_BASE=http://host:port`）：直接用已在运行的服务，
+       不自起、不回收 —— 用于真实数据等本机跑不动的场景。
+
+    数据依赖强的用例用 `@pytest.mark.seedonly` 标记，外部模式用 `-m "not seedonly"` 排除，
+    这样同一套用例可以跑两种数据集。
 
     注意：SUT 的 stdout/stderr 必须重定向到文件而不是 subprocess.PIPE。
-    用 PIPE 且不读取时，500 的 traceback 会把管道缓冲区写满，
-    被测服务随即阻塞在 write 上，表现为「所有请求无响应」的假死。
-    这是测试框架自身的经典缺陷，第一次跑就踩到了。
+    用 PIPE 且不读取时，500 的 traceback 会把管道缓冲区写满，被测服务随即阻塞在 write 上，
+    表现为「所有请求无响应」的假死。这是测试框架自身的经典缺陷，第一次跑就踩到了。
     """
+    external = os.getenv('GUOHUA_EXTERNAL_BASE')
+    if external:
+        yield external.rstrip('/')
+        return
+
+    fake_cloud = request.getfixturevalue('fake_cloud')
     port = _free_port()
     base = f'http://127.0.0.1:{port}'
     env = os.environ.copy()
