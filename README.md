@@ -2,7 +2,7 @@
 
 [![api-tests](https://github.com/YuZheng0121/guohua-api-tests/actions/workflows/api-test.yml/badge.svg)](https://github.com/YuZheng0121/guohua-api-tests/actions/workflows/api-test.yml)
 
-对一个真实 Flask 项目的接口层与页面层做自动化测试与缺陷挖掘：**21 个路由、55 条用例、发现 15 个已复现缺陷**，CI 双 Python 版本矩阵 + 独立 E2E job，全部通过。
+对一个真实 Flask 项目的接口层与页面层做自动化测试与缺陷挖掘：**21 个路由、55 条用例、发现 14 个已复现缺陷**，CI 双 Python 版本矩阵 + 独立 E2E job，全部通过。
 
 被测系统（SUT）是一个真实的课题组内部 WebUI（992 行，中国绘画关键点/检测结果可视化），脱敏副本见 [`sut/app.py`](sut/app.py)。测试过程中对 SUT 只做了 3 处**可测性改造**（数据目录 / CSV 目录 / 端口支持环境变量），业务逻辑一行没改——缺陷保持原样，因为它才是测试对象。
 
